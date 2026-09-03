@@ -4,15 +4,19 @@ A Claude Code skill that provisions a DigitalOcean droplet with `doctl` and
 hardens it for SSH: non-root sudo user, key-only auth (optional custom port),
 UFW firewall. It records the droplet's connection details to Claude's memory on
 creation, and cleans that up (plus known-hosts, auto-imported keys) on
-deletion.
+deletion. Optionally installs Claude Code on the droplet with a Remote Control
+service so it can be driven from claude.ai/code or the Claude mobile app.
 
 ## Layout
 
 - [`SKILL.md`](SKILL.md) — the skill Claude follows
 - `references/doctl-setup.md` — install + auth `doctl` on macOS, Linux, Windows, Docker
 - `references/ssh-keys.md` — ELI5 SSH keys + per-OS generate/store/backup steps
+- `references/remote-control.md` — optional: run Claude Code on the droplet, driven from claude.ai/mobile
 - `scripts/provision.sh` — create the droplet, wait for SSH, print the IP
 - `scripts/harden.sh` — run on the droplet: sudo user, keys, swap, UFW, sshd lockdown
+- `scripts/setup-claude-code.sh` — optional: install Node 22 + Claude Code + a `systemd --user` Remote Control service
+- `assets/claude-rc.service` — systemd unit template used by the setup script
 
 ## Install as a personal skill
 

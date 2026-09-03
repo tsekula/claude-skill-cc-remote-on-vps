@@ -10,6 +10,8 @@ description: >-
   it when the user has an existing fresh droplet IP and wants it secured for SSH.
   Also handles the reverse — deleting a droplet this skill created and cleaning
   up after it (see Step 7) — so use it when the user wants to tear one down too.
+  Optionally sets the droplet up to run Claude Code with Remote Control, so it
+  can be driven from claude.ai/code or the Claude mobile app.
 ---
 
 # DigitalOcean droplet with basic SSH
@@ -24,6 +26,9 @@ There are two scripts:
 - `scripts/provision.sh` — creates the droplet and waits until SSH answers.
 - `scripts/harden.sh` — runs **on the droplet** to create the sudo user,
   configure `sshd`, and enable UFW.
+- `scripts/setup-claude-code.sh` — optional, runs **on the droplet** to install
+  Claude Code + a Remote Control service (see the optional section after
+  Step 6).
 
 ## When to run which part
 
@@ -31,6 +36,8 @@ There are two scripts:
   provision, harden, verify, summarise. Record the result to memory.
 - **User already made a droplet** in the web console and gives you an IP:
   skip to Step 4 (hardening), then verify and summarise.
+- **Make it a Claude Code box:** after Step 6, do the optional Remote Control
+  section (`references/remote-control.md`).
 - **Tearing a droplet down:** jump to Step 7 — delete it and clean up, including
   the memory entry.
 
@@ -309,6 +316,41 @@ the deprovision step (Step 7) can find and remove it. Store, at minimum:
 
 Keep it accurate: if the droplet is later resized, rebuilt, or its key
 changes, update the same entry rather than adding a second one.
+
+## Optional: run Claude Code on the droplet (Remote Control)
+
+If the user wants to drive Claude Code *on the droplet* from `claude.ai/code`
+or the Claude mobile app — "make this a Claude Code box", "control it from my
+phone" — set up Remote Control. Full walkthrough in
+`references/remote-control.md`; the short version:
+
+1. **Sizing.** Claude Code needs Node 22 and idles around 0.5–1 GB before MCP
+   servers and a real toolchain. Steer to `s-2vcpu-4gb`, or `s-1vcpu-2gb`
+   `--swap 2G` as a floor (see Step 2b).
+2. **Install.** Copy `scripts/setup-claude-code.sh` to the droplet, run it as
+   the sudo user: `bash setup-claude-code.sh --name <droplet-name> --service`.
+   It installs Node 22 (from nodejs.org — apt only has 18), Claude Code, tmux,
+   makes `~/projects/scratch`, and installs a `systemd --user` unit + linger so
+   Remote Control survives reboot.
+3. **Log in** (interactive — you can't do it for them, but you can relay). In
+   an SSH session: `cd ~/projects/scratch && claude`, choose the subscription
+   option. Claude Code prints an OAuth URL and waits for a pasted code. Give
+   the URL to the user; they approve in a browser signed into their Claude
+   (Pro/Max) account and paste back the `<code>#<state>` string; you feed it in
+   (via `tmux send-keys` if driving a tmux session). Then accept the workspace
+   trust dialog and `/exit`.
+4. **Start it.** `systemctl --user enable --now claude-rc`, then
+   `systemctl --user status claude-rc`. Without a TTY, `claude remote-control`
+   skips its y/n gate and just connects.
+5. **Hand off.** Give the user the session URL
+   (`https://claude.ai/code?environment=<env id>`) and tell them it also shows
+   as `<droplet-name>` in `claude.ai/code` and the mobile **Code** tab. Mention
+   `/config` → push notifications.
+
+Add a note to the droplet's memory entry that it runs Remote Control, with the
+session name and the `systemctl --user … claude-rc` management commands.
+
+No firewall change is needed — Remote Control is outbound HTTPS only.
 
 ## Step 7 — Deleting the droplet later
 

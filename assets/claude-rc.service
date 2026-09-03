@@ -1,0 +1,22 @@
+[Unit]
+Description=Claude Code Remote Control (__SESSION_NAME__)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__PROJECT_DIR__
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=TERM=dumb
+Environment=NO_COLOR=1
+ExecStart=/usr/local/bin/claude remote-control --name __SESSION_NAME__
+Restart=on-failure
+RestartSec=10
+# The live status line redraws once a second; discard it. The session URL is
+# recoverable with: systemctl --user show -p Environment claude-rc  (env id)
+# or from claude.ai/code, or `claude remote-control --continue` in the dir.
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=default.target

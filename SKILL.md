@@ -52,6 +52,13 @@ droplet still costs money and a botched `sshd` config can lock everyone out.
    never pass it as `--access-token` — `doctl auth init` prompts for it
    directly. For CI/automation, `DIGITALOCEAN_ACCESS_TOKEN` is the
    non-interactive alternative.
+   - If `doctl auth init` **fails with a 401 and never prompts for a new
+     token**, it's re-validating a stale one it already has. Send the user to
+     `references/doctl-setup.md` §5: clear the saved context
+     (`doctl auth remove --context default`, then `doctl auth init`), and
+     check for a `DIGITALOCEAN_ACCESS_TOKEN` / `DIGITALOCEAN_API_TOKEN` env var
+     that would bypass the prompt. Regenerating the token alone won't fix it if
+     `doctl` never asks for the new value.
 3. **SSH key.** See the dedicated section below — this is where a first-time
    user most often gets stuck, so handle it patiently and offer to generate a
    key for them.

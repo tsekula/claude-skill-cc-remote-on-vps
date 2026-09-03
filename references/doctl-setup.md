@@ -188,3 +188,74 @@ doctl account get
 Success prints your account email, droplet limit, and status. Any error here
 (401, "unable to initialize") means the token is missing, wrong, expired, or
 lacks scope — fix that before running the skill.
+
+---
+
+## 5. Troubleshooting auth
+
+### `doctl auth init` keeps failing and never asks for a new token
+
+Symptom:
+
+```
+Validating token... ✘
+Error: Unable to use supplied token to access API: ... 401 ... Unable to authenticate you
+```
+
+...and re-running `doctl auth init` goes straight back to that error **without
+prompting you to paste a token**. That's the key clue: `doctl` is re-validating
+a token it *already has stored* (or one in the environment) instead of asking
+for a new one. Regenerating the token in the DigitalOcean dashboard doesn't
+help, because `doctl` never asks you for the new value.
+
+There are two places a stale token hides. Check both.
+
+**a) A saved auth context** (most common). `doctl` stores tokens in named
+contexts in its config file; the first one is called `default`. If that
+context holds a dead token, clear it and `auth init` will prompt fresh:
+
+```bash
+doctl auth list                      # lists contexts; "default" is the built-in one
+doctl auth remove --context default  # -> "Context deleted successfully"
+doctl auth init                       # now actually prompts for a token
+doctl account get                     # confirm
+```
+
+(If you had extra contexts like `work`, remove whichever one is broken by
+name.)
+
+**b) An environment variable.** If `DIGITALOCEAN_ACCESS_TOKEN` or
+`DIGITALOCEAN_API_TOKEN` is set, `doctl` uses it and **skips the prompt
+entirely** — and it wins over the config file, so fixing the context won't help
+until it's gone:
+
+```bash
+env | grep -i digitalocean
+grep -rn DIGITALOCEAN ~/.bashrc ~/.zshrc ~/.profile ~/.bash_profile ~/.zprofile 2>/dev/null
+unset DIGITALOCEAN_ACCESS_TOKEN DIGITALOCEAN_API_TOKEN
+```
+
+Also delete the `export` line from whichever shell rc file `grep` found, or it
+returns in every new terminal. To force a one-off prompt without touching your
+shell:
+
+```bash
+env -u DIGITALOCEAN_ACCESS_TOKEN -u DIGITALOCEAN_API_TOKEN doctl auth init
+```
+
+### The token really is bad
+
+If it *does* prompt and still 401s, the token itself is the problem. Confirm
+with a direct call (hidden prompt, so it stays out of shell history):
+
+```bash
+read -rsp 'token: ' TOK && echo && \
+  curl -sS -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: Bearer $TOK" https://api.digitalocean.com/v2/account && \
+  unset TOK
+```
+
+- `200` — token is fine; the problem is a stored context or env var (above).
+- `401` — regenerate the token. Make sure it's a **Personal Access Token**
+  (`dop_v1_` + 64 hex chars), not a Spaces key, and that the paste wasn't
+  truncated or padded with a trailing space.

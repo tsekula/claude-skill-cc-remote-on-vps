@@ -17,7 +17,10 @@ service so it can be driven from claude.ai/code or the Claude mobile app.
 - `scripts/harden.sh` — run on the droplet: sudo user, keys, swap, UFW, sshd lockdown
 - `scripts/setup-claude-code.sh` — optional: install Node 22 + Claude Code + the templated `claude-rc@` service, set up the first server
 - `scripts/add-rc-server.sh` — optional: add another Remote Control server (own directory / session), optionally cloning a repo
-- `assets/claude-rc@.service` — templated systemd unit (`claude-rc@<name>`) used by the setup scripts
+
+`setup-claude-code.sh` writes the templated `claude-rc@.service` systemd unit
+directly (one instance per directory: `systemctl --user enable --now
+claude-rc@<name>`).
 
 ## Install as a personal skill
 

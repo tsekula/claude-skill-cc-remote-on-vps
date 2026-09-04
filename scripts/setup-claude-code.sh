@@ -91,12 +91,10 @@ echo "First Remote Control directory: $PROJECT_DIR"
 if [[ "$INSTALL_SERVICE" -eq 1 ]]; then
   echo "Installing templated systemd --user unit 'claude-rc@' ..."
   mkdir -p "$HOME/.config/systemd/user"
-  unit="$HOME/.config/systemd/user/claude-rc@.service"
-  tpl="$(dirname "$0")/../assets/claude-rc@.service"
-  if [[ -f "$tpl" ]]; then
-    cp "$tpl" "$unit"
-  else
-    cat > "$unit" <<'EOF'
+  # Templated unit: %i is BOTH the served directory (~/projects/%i) and the
+  # Remote Control session name. Enable one per directory:
+  #   systemctl --user enable --now claude-rc@sandbox
+  cat > "$HOME/.config/systemd/user/claude-rc@.service" <<'EOF'
 [Unit]
 Description=Claude Code Remote Control (%i)
 After=network-online.target
@@ -111,13 +109,14 @@ Environment=NO_COLOR=1
 ExecStart=/usr/local/bin/claude remote-control --name %i
 Restart=on-failure
 RestartSec=10
+# The live status line redraws once a second; discard it. Recover the session
+# URL from claude.ai/code, or `claude remote-control --continue` in the dir.
 StandardOutput=null
 StandardError=journal
 
 [Install]
 WantedBy=default.target
 EOF
-  fi
   # linger lets user services run with no active login (i.e. after reboot)
   sudo loginctl enable-linger "$USER"
   systemctl --user daemon-reload

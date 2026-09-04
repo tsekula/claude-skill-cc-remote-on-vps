@@ -375,12 +375,13 @@ sandbox. Each server is one directory under `~/projects` and one named entry in
    for the connection details.
 2. **Pick a name** with the user — becomes `~/projects/<name>` and the session
    label. `[a-z0-9-]` only. Default it to the repo name when cloning.
-3. **Ensure `add-rc-server.sh` is on the droplet.** If it isn't (older setup),
-   `scp` it and `assets/claude-rc@.service` up; the script needs
-   `~/.config/systemd/user/claude-rc@.service` and errors without it. A droplet
-   whose only unit is the pre-templated `claude-rc.service` needs
-   `setup-claude-code.sh --service` re-run once to install the template
-   (harmless: it skips already-installed Node/Claude Code).
+3. **Ensure the tooling is on the droplet.** `add-rc-server.sh` needs
+   `~/.config/systemd/user/claude-rc@.service`, which `setup-claude-code.sh
+   --service` writes. If the droplet was set up before the templated unit
+   existed (its only unit is `claude-rc.service`), `scp` the current
+   `scripts/setup-claude-code.sh` and `scripts/add-rc-server.sh` up and re-run
+   `bash setup-claude-code.sh --name <first> --service` once — it's idempotent
+   (skips already-installed Node/Claude Code) and just adds the template.
 4. **Run it:**
    ```bash
    ./add-rc-server.sh --name <name> [--repo <git-url>]

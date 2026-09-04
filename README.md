@@ -1,12 +1,15 @@
-# linux-vps (repo: claude-droplet)
+# Claude Remote Control on VPS
 
-A Claude Code skill that provisions a Linux cloud server on **DigitalOcean**
-(`doctl`) or **Hetzner Cloud** (`hcloud`) and hardens it for SSH: non-root sudo
-user, key-only auth (optional custom port), UFW firewall. It records the
-server's connection details to Claude's memory on creation, and cleans that up
-(plus known-hosts, auto-imported keys) on deletion. **By default it also
-installs Claude Code + a Remote Control service** on the server (Step 6,
-skippable) so it can be driven from claude.ai/code or the Claude mobile app.
+*(skill name `claude-remote-vps`; repo `claude-droplet`)*
+
+A Claude Code skill that stands up a Linux VPS on **DigitalOcean** (`doctl`) or
+**Hetzner Cloud** (`hcloud`) to run **Claude Code with Remote Control** — driven
+from claude.ai/code or the Claude mobile app. It provisions the server, hardens
+it for SSH (non-root sudo user, key-only auth, optional custom port, UFW
+firewall), then **by default installs Claude Code + a Remote Control systemd
+service** (Step 6, skippable for a plain box). Connection details go to Claude's
+memory on creation and are cleaned up (with known-hosts + auto-imported keys) on
+deletion.
 
 Neither provider is the default — the skill asks in Step 1.
 
@@ -30,7 +33,7 @@ claude-rc@<name>`).
 
 ```bash
 mkdir -p ~/.claude/skills
-ln -s "$(pwd)" ~/.claude/skills/linux-vps
+ln -s "$(pwd)" ~/.claude/skills/claude-remote-vps
 ```
 
 Then in Claude Code: "spin up a new Hetzner server called web-01 in Nuremberg",
@@ -48,7 +51,7 @@ or "make me a DigitalOcean droplet in Frankfurt".
 The symlink command above is bash. Equivalents:
 
 - **macOS:** same as Linux —
-  `ln -s "$(pwd)" ~/.claude/skills/linux-vps`
+  `ln -s "$(pwd)" ~/.claude/skills/claude-remote-vps`
 - **Windows (PowerShell, as admin):**
-  `New-Item -ItemType SymbolicLink -Path "$HOME\.claude\skills\linux-vps" -Target (Get-Location)`
+  `New-Item -ItemType SymbolicLink -Path "$HOME\.claude\skills\claude-remote-vps" -Target (Get-Location)`
 - Or just copy the folder into `~/.claude/skills/` instead of symlinking.

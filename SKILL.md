@@ -1,27 +1,29 @@
 ---
-name: linux-vps
+name: claude-remote-vps
 description: >-
-  Provision a new Linux cloud server on DigitalOcean (doctl) or Hetzner Cloud
-  (hcloud) and lock it down for SSH access: a non-root sudo user, key-only
-  authentication (optionally on a custom port), and a UFW firewall. Use this
-  whenever the user wants to spin up, create, set up, or bootstrap a VPS, cloud
-  server, droplet, or "a box on DO / Hetzner" — even if they only say "I need a
-  new server" and name one of those providers or its CLI, and even if they
-  don't spell out the hardening steps. Also use it when the user has an existing
-  fresh server IP and wants it secured for SSH. Also handles the reverse —
-  deleting a server this skill created and cleaning up after it (see Step 8) —
-  so use it when the user wants to tear one down too. By default it also sets
-  the server up to run Claude Code with Remote Control (skippable), so it can be
-  driven from claude.ai/code or the Claude mobile app.
+  Stand up a Linux VPS on DigitalOcean (doctl) or Hetzner Cloud (hcloud) that
+  runs Claude Code with Remote Control, so it can be driven from claude.ai/code
+  or the Claude mobile app. Provisions the server, hardens it for SSH (non-root
+  sudo user, key-only auth, optional custom port, UFW firewall), then installs
+  Claude Code + a Remote Control systemd service by default (skippable for a
+  plain box). Use this whenever the user wants to spin up, create, set up, or
+  bootstrap a VPS, cloud server, droplet, or "a box on DO / Hetzner" — to run
+  Claude Code on, to control Claude from their phone, or just as a hardened
+  server — even if they only say "I need a new server" and name a provider or
+  its CLI, and even without spelling out the steps. Also use it when the user
+  has an existing fresh server IP to secure for SSH, when they want to add
+  another Remote Control session to a box, or to delete a server this skill
+  created and clean up after it (see Step 8).
 ---
 
-# Provision and harden a Linux VPS
+# Claude Remote Control on VPS
 
 This skill takes a user from "I want a new server" to "I can `ssh` in as a
-non-root user, with passwords disabled and a firewall up." It supports two
-providers — **DigitalOcean** (`doctl`) and **Hetzner Cloud** (`hcloud`) — and
-neither is the default: pick one in Step 1. It creates the server with that
-provider's CLI, then runs a hardening pass over SSH.
+non-root user, with passwords disabled and a firewall up, and drive Claude Code
+on it from my phone." It supports two providers — **DigitalOcean** (`doctl`) and
+**Hetzner Cloud** (`hcloud`) — and neither is the default: pick one in Step 1.
+It creates the server with that provider's CLI, runs a hardening pass over SSH,
+then sets up Claude Code + Remote Control (Step 6, skippable).
 
 Provider-specific details (CLI install/auth, regions, sizes, prices, teardown
 commands) live in `references/digitalocean.md` and `references/hetzner.md`. The

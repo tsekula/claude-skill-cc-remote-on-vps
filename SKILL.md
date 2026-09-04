@@ -38,6 +38,9 @@ There are two scripts:
   skip to Step 4 (hardening), then verify and summarise.
 - **Make it a Claude Code box:** after Step 6, do the optional Remote Control
   section (`references/remote-control.md`).
+- **Add another Remote Control server** to a droplet that's already a Claude
+  Code box (a repo in its own session, another sandbox): jump to the "Add
+  another Remote Control server" subsection after the optional section.
 - **Tearing a droplet down:** jump to Step 7 — delete it and clean up, including
   the memory entry.
 
@@ -354,18 +357,53 @@ phone" — set up Remote Control. Full walkthrough in
    as `<name>` in `claude.ai/code` and the mobile **Code** tab. Mention
    `/config` → push notifications.
 
-**More servers / repos.** To add another directory or clone a repo into its own
-session: on the droplet, `./add-rc-server.sh --name <other> [--repo <git-url>]`,
-then trust the dir and `systemctl --user enable --now claude-rc@<other>`. For a
-**private** repo the droplet needs GitHub auth first (`gh auth login` device
-flow, a deploy key, or a PAT) — this is *not* part of droplet setup; walk the
-user through it from `references/remote-control.md` → "Private GitHub
-repositories" only when they need it.
-
 Add a note to the droplet's memory entry that it runs Remote Control, listing
 the server name(s) and the `systemctl --user … claude-rc@<name>` commands.
 
 No firewall change is needed — Remote Control is outbound HTTPS only.
+
+### Add another Remote Control server
+
+Use this when the droplet is already a Claude Code box (Node + Claude Code +
+the `claude-rc@` unit installed via `setup-claude-code.sh --service`) and the
+user wants a **second** session — a repo in its own directory, or another
+sandbox. Each server is one directory under `~/projects` and one named entry in
+`claude.ai/code` and the mobile Code tab.
+
+1. **Get onto the droplet.** Recover its SSH host / port / key from the
+   `droplet-<name>` memory entry (Step 6). If there's no entry, ask the user
+   for the connection details.
+2. **Pick a name** with the user — becomes `~/projects/<name>` and the session
+   label. `[a-z0-9-]` only. Default it to the repo name when cloning.
+3. **Ensure `add-rc-server.sh` is on the droplet.** If it isn't (older setup),
+   `scp` it and `assets/claude-rc@.service` up; the script needs
+   `~/.config/systemd/user/claude-rc@.service` and errors without it. A droplet
+   whose only unit is the pre-templated `claude-rc.service` needs
+   `setup-claude-code.sh --service` re-run once to install the template
+   (harmless: it skips already-installed Node/Claude Code).
+4. **Run it:**
+   ```bash
+   ./add-rc-server.sh --name <name> [--repo <git-url>]
+   ```
+   Omit `--repo` for an empty directory. For a **private** repo, the droplet
+   needs GitHub auth first (`gh auth login` device flow, a deploy key, or a
+   PAT) — walk the user through `references/remote-control.md` → "Private GitHub
+   repositories"; it is not automated.
+5. **Trust + enable** (the script prints these):
+   ```bash
+   cd ~/projects/<name> && claude      # accept trust, then /exit
+   systemctl --user enable --now claude-rc@<name>
+   ```
+   Trust is per directory even though login is once per droplet. Driving the
+   trust step over chat: run `claude` in a tmux session and `tmux send-keys`
+   the Down+Enter to select "Yes, I trust this folder".
+6. **Hand off.** Confirm it's `active` (`systemctl --user status
+   claude-rc@<name>`), give the user the session URL, and note the new server
+   in the droplet's memory entry.
+
+Watch memory pressure: each server idles ~150–300 MB. Two or three on a 2 GB
+droplet, more on 4 GB+. `systemctl --user stop claude-rc@<name>` frees one
+without losing its state.
 
 ## Step 7 — Deleting the droplet later
 

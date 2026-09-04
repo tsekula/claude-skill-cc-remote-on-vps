@@ -310,12 +310,20 @@ change):
 5. **Start it.** `systemctl --user enable --now claude-rc@<name>`, then
    `systemctl --user status claude-rc@<name>`. Without a TTY,
    `claude remote-control` skips its y/n gate and just connects.
-6. **Hand off.** Give the user the session URL
-   (`https://claude.ai/code?environment=<env id>`) and tell them it also shows
-   as `<name>` in `claude.ai/code` and the mobile **Code** tab. Mention
-   `/config` → push notifications.
+6. **Hand off.** Print this block verbatim (filled in), and repeat it in the
+   Step 7 summary:
 
-Record the RC server name(s) in the memory entry in Step 7.
+   ```
+   === REMOTE CONTROL READY ===
+   Session name:  <name>       — appears under this name at claude.ai/code and in the Claude app's Code tab
+   Launch URL:    https://claude.ai/code?environment=<env id>
+   Add another:   ask this skill any time — "add a Remote Control server called <x>" — for a second, parallel session on the same box
+   ```
+
+   Also mention `/config` → push notifications. If more than one RC server was
+   set up, list every name + Launch URL.
+
+Record the RC server name(s) + Launch URL(s) in the memory entry in Step 7.
 
 ## Step 7 — Summary
 
@@ -336,14 +344,19 @@ Use an **absolute** path for the key (expand `~`), and the private key file
 (no `.pub`). If SSH is on 22 you may drop `-p 22` from the `Connect` line, but
 still fill in the `SSH port:` field.
 
+If a Remote Control server was set up in Step 6, also print its
+`=== REMOTE CONTROL READY ===` block (from Step 6) — one per RC server —
+including the **session name**, the **Launch URL**, and the "ask this skill for
+another parallel session" line.
+
 Then the human-readable recap:
 
 - server name, **provider**, location (full name), size/type, image, server ID
 - what was hardened: root SSH disabled, password auth disabled, passwordless
   `sudo` for `<user>`, UFW active with ports `<ssh>`, 80, 443 open; swapfile if
   `--swap` was used
-- **Remote Control:** the RC server name(s) and session URL(s), or "skipped"
-  with the reason
+- **Remote Control:** each RC server's name + Launch URL, and that the user can
+  ask for more parallel sessions later — or "skipped" with the reason
 - which key file is the private one to guard, and the reminder to back it up
 - if the `~/.ssh/config` alias was added, note that `ssh <server-name>` now
   works too

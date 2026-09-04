@@ -12,11 +12,12 @@ service so it can be driven from claude.ai/code or the Claude mobile app.
 - [`SKILL.md`](SKILL.md) — the skill Claude follows
 - `references/doctl-setup.md` — install + auth `doctl` on macOS, Linux, Windows, Docker
 - `references/ssh-keys.md` — ELI5 SSH keys + per-OS generate/store/backup steps
-- `references/remote-control.md` — optional: run Claude Code on the droplet, driven from claude.ai/mobile
+- `references/remote-control.md` — optional: run Claude Code on the droplet (one or more Remote Control servers), driven from claude.ai/mobile; private-repo auth
 - `scripts/provision.sh` — create the droplet, wait for SSH, print the IP
 - `scripts/harden.sh` — run on the droplet: sudo user, keys, swap, UFW, sshd lockdown
-- `scripts/setup-claude-code.sh` — optional: install Node 22 + Claude Code + a `systemd --user` Remote Control service
-- `assets/claude-rc.service` — systemd unit template used by the setup script
+- `scripts/setup-claude-code.sh` — optional: install Node 22 + Claude Code + the templated `claude-rc@` service, set up the first server
+- `scripts/add-rc-server.sh` — optional: add another Remote Control server (own directory / session), optionally cloning a repo
+- `assets/claude-rc@.service` — templated systemd unit (`claude-rc@<name>`) used by the setup scripts
 
 ## Install as a personal skill
 

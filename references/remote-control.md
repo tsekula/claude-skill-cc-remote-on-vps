@@ -8,6 +8,16 @@ skill's UFW rules need no change.
 
 Official docs: https://code.claude.com/docs/en/remote-control
 
+## Model: one server per directory
+
+A `claude remote-control` process is a **server for one directory**. Every
+session it spawns shares that directory (`--spawn same-dir`), and it shows up as
+**one named entry** in `claude.ai/code` and the mobile Code tab.
+
+To work on several things — a sandbox plus one or more repos — run **several
+servers**, one per directory, each its own systemd instance. See
+[Multiple Remote Control servers](#multiple-remote-control-servers).
+
 ## Prerequisites
 
 - **Claude Pro or Max** (Team/Enterprise need an Owner to enable the Remote
@@ -19,23 +29,28 @@ Official docs: https://code.claude.com/docs/en/remote-control
 - **Node 22+**. Ubuntu 24.04's apt only has 18, so the helper script installs
   Node 22 from nodejs.org.
 
-## 1. Install (automated)
+## 1. Install + first server (automated)
+
+Ask the user what to call the **first** Remote Control server. That name becomes
+the directory `~/projects/<name>` **and** the session label they'll see in
+`claude.ai/code` and the mobile Code tab, so it should mean something —
+`sandbox` for throwaway experiments, or a project/repo name. `[a-z0-9-]` only.
 
 Copy `scripts/setup-claude-code.sh` to the droplet and run it **as the sudo
 user** (not root):
 
 ```bash
 scp -i <key> scripts/setup-claude-code.sh <user>@<ip>:/tmp/
-ssh -i <key> <user>@<ip> "bash /tmp/setup-claude-code.sh --name <droplet-name> --service"
+ssh -i <key> <user>@<ip> "bash /tmp/setup-claude-code.sh --name <first-server-name> --service"
 ```
 
-It installs Node 22, `@anthropic-ai/claude-code`, and `tmux`; creates
-`~/projects/scratch`; and with `--service` installs a `systemd --user` unit
-plus `loginctl enable-linger` so Remote Control survives logout and reboot. It
-does **not** log you in — that's interactive — and prints the remaining steps.
+It installs Node 22, `@anthropic-ai/claude-code`, `tmux`, and `git`; creates
+`~/projects/<name>`; and with `--service` installs the **templated**
+`systemd --user` unit `claude-rc@.service` plus `loginctl enable-linger` so
+servers survive logout and reboot. It does **not** log you in — that's
+interactive — and prints the remaining steps.
 
-Flags: `--project-dir PATH` (default `~/projects/scratch`), `--name NAME`
-(session name shown in claude.ai/code, default hostname), `--service`.
+Flags: `--name NAME` (default `sandbox`), `--service`.
 
 ## 2. Log in (interactive, headless-friendly)
 
@@ -44,7 +59,7 @@ waits for a pasted code — no localhost callback, so no SSH tunnel needed.
 
 ```bash
 ssh -i <key> <user>@<ip>
-cd ~/projects/scratch && claude
+cd ~/projects/<name> && claude
 ```
 
 - Choose **"Claude account with subscription"**.
@@ -56,24 +71,27 @@ cd ~/projects/scratch && claude
   untrusted directory, and never from `$HOME`).
 - `/exit`.
 
-Driving this for someone over chat: run `claude` in a `tmux` session so it
+Login is once per droplet — the token in `~/.claude*` covers every server.
+Workspace trust, though, is **per directory**: repeat the `cd … && claude` +
+trust step for each new server directory.
+
+Driving login for someone over chat: run `claude` in a `tmux` session so it
 stays alive between steps, `tmux capture-pane -p` to read the URL, relay it,
 and `tmux send-keys -t <sess> -l "<code>"` then `send-keys Enter` to submit.
 
-## 3. Start Remote Control
+## 3. Start the first server
 
-### With the systemd service (persists across reboot)
+### With systemd (persists across reboot)
 
 ```bash
-systemctl --user enable --now claude-rc
-systemctl --user status claude-rc --no-pager
+systemctl --user enable --now claude-rc@<name>
+systemctl --user status claude-rc@<name> --no-pager
 ```
 
-The session appears as your `--name` at `claude.ai/code` and in the mobile
-**Code** tab. If it doesn't connect:
-`journalctl --user -u claude-rc -n 30 --no-pager`.
+Appears as `<name>` at `claude.ai/code` and in the mobile **Code** tab. If it
+doesn't connect: `journalctl --user -u claude-rc@<name> -n 30 --no-pager`.
 
-Manage it: `systemctl --user {restart,stop,disable} claude-rc`.
+Manage it: `systemctl --user {restart,stop,disable} claude-rc@<name>`.
 
 Why this works unattended: run without a TTY, `claude remote-control` skips its
 interactive "Enable Remote Control? (y/n)" gate and connects straight away. The
@@ -83,15 +101,82 @@ status-line redraw.
 ### Without systemd — tmux only
 
 ```bash
-tmux new -s cc
-cd ~/projects/scratch && claude remote-control --name <droplet-name>
-#   Ctrl-b then d   to detach; it keeps running until the droplet reboots
+tmux new -s <name>
+cd ~/projects/<name> && claude remote-control --name <name>
+#   Ctrl-b then d   to detach; runs until the droplet reboots
 ```
 
-Reattach later with `tmux attach -t cc`. This does **not** survive a reboot;
-re-run `scripts/setup-claude-code.sh --service` to upgrade to the systemd unit.
+Reattach with `tmux attach -t <name>`. Re-run `setup-claude-code.sh --service`
+to upgrade to the systemd unit.
 
-## 4. Connect
+## Multiple Remote Control servers
+
+The unit is templated (`claude-rc@.service`), so each server is an instance
+named after its directory under `~/projects`:
+
+```bash
+# on the droplet, as the sudo user, after setup-claude-code.sh
+./add-rc-server.sh --name myapp --repo git@github.com:me/myapp.git
+#   (omit --repo for an empty directory)
+
+cd ~/projects/myapp && claude          # accept trust, then /exit
+systemctl --user enable --now claude-rc@myapp
+```
+
+`add-rc-server.sh` makes the directory (cloning the repo if `--repo` is given),
+checks the templated unit is installed, and prints the trust + enable steps. Now
+`claude.ai/code` lists `sandbox`, `myapp`, … each driving its own directory.
+
+Running many at once: each server idles ~150–300 MB. On a 2 GB droplet keep it
+to 2–3; sensible on 4 GB+. Stop ones you're not using with
+`systemctl --user stop claude-rc@<name>` (state is kept; `start` brings it
+back).
+
+`--spawn worktree` (edit the unit's `ExecStart`, or add a drop-in with
+`systemctl --user edit claude-rc@<name>`) puts each on-demand session in its own
+git worktree so parallel sessions in one repo don't collide.
+
+## Private GitHub repositories
+
+`add-rc-server.sh --repo` just runs `git clone`; a private repo needs auth **on
+the droplet** first. This is not part of droplet setup — set it up when needed.
+Pick one:
+
+- **GitHub CLI, device flow** (easiest headless):
+  ```bash
+  sudo apt-get install -y gh        # or: see cli.github.com for the apt repo
+  gh auth login                     # choose GitHub.com > HTTPS > device code
+  ```
+  It prints a one-time code and a URL; open the URL in a browser signed in to
+  GitHub, enter the code, approve. `gh` then configures git credentials, so
+  `git clone https://github.com/<owner>/<repo>.git` works. Relay the code the
+  same way as the Claude login.
+
+- **Deploy key** (scoped to one repo):
+  ```bash
+  ssh-keygen -t ed25519 -f ~/.ssh/id_<repo> -N ""
+  cat ~/.ssh/id_<repo>.pub
+  ```
+  Add that public key at the repo's **Settings → Deploy keys** (check "Allow
+  write access" only if the droplet needs to push). Then add to `~/.ssh/config`:
+  ```
+  Host github.com-<repo>
+      HostName github.com
+      User git
+      IdentityFile ~/.ssh/id_<repo>
+  ```
+  and clone `git@github.com-<repo>:<owner>/<repo>.git`.
+
+- **Fine-grained PAT**: create one at GitHub → Settings → Developer settings,
+  scoped to the repo with Contents: Read. Clone
+  `https://<token>@github.com/<owner>/<repo>.git`, or store it with
+  `git config --global credential.helper store` after one prompted clone. The
+  token sits in `~/.git-credentials` in plaintext — prefer `gh` or a deploy key.
+
+For pushing back, `gh` and a write-enabled deploy key both work; a PAT needs
+Contents: Read **and** Write.
+
+## Connect
 
 - **Web**: the session URL from the terminal, or pick the session by name at
   `claude.ai/code`.
@@ -99,12 +184,11 @@ re-run `scripts/setup-claude-code.sh --service` to upgrade to the systemd unit.
   = online). No app yet? Run `/mobile` in a `claude` session for a QR.
 - **QR**: in a foreground `claude remote-control`, press <kbd>space</kbd>.
 
-Recover the session URL later: it's
-`https://claude.ai/code?environment=<env id>`; the env id is stable per
-directory. `claude remote-control --continue` in the project dir also
-reattaches (within ~4h of the last server there).
+Recover a session URL later: it's `https://claude.ai/code?environment=<env id>`;
+the env id is stable per directory. `claude remote-control --continue` in the
+project dir also reattaches (within ~4h of the last server there).
 
-## 5. Push notifications
+## Push notifications
 
 In a plain `claude` session on the droplet: `/config` → enable **Push when
 Claude decides** and/or **Push when actions required**. Needs the mobile app
@@ -112,13 +196,13 @@ installed and signed in to the same account.
 
 ## Operating notes
 
-- **Reboot**: with the systemd unit + linger, Remote Control comes back on its
-  own. Workspace trust and the login token persist in `~/.claude*`.
+- **Reboot**: enabled `claude-rc@*` instances come back on their own (unit +
+  linger). Workspace trust and the login token persist in `~/.claude*`.
 - **Updating Claude Code**: `sudo npm i -g @anthropic-ai/claude-code`, then
-  `systemctl --user restart claude-rc`.
-- **Teardown**: destroying the droplet (skill Step 7) takes the Remote Control
-  session, the login token, and the systemd unit with it — nothing to undo on
-  the account side. The session just disappears from `claude.ai/code`.
+  `systemctl --user restart 'claude-rc@*'`.
+- **Teardown**: destroying the droplet (skill Step 7) takes every Remote Control
+  session, the login token, and the units with it — nothing to undo on the
+  account side. The sessions just disappear from `claude.ai/code`.
 - **One account, shared control**: anyone signed into that Claude account can
   drive the droplet while Remote Control is up, and the transcript is stored on
   Anthropic servers per the Data usage policy.

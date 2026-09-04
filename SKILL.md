@@ -27,8 +27,8 @@ There are two scripts:
 - `scripts/harden.sh` — runs **on the droplet** to create the sudo user,
   configure `sshd`, and enable UFW.
 - `scripts/setup-claude-code.sh` — optional, runs **on the droplet** to install
-  Claude Code + a Remote Control service (see the optional section after
-  Step 6).
+  Claude Code + the first Remote Control server (see the optional section after
+  Step 6). `scripts/add-rc-server.sh` adds more.
 
 ## When to run which part
 
@@ -324,31 +324,46 @@ or the Claude mobile app — "make this a Claude Code box", "control it from my
 phone" — set up Remote Control. Full walkthrough in
 `references/remote-control.md`; the short version:
 
-1. **Sizing.** Claude Code needs Node 22 and idles around 0.5–1 GB before MCP
-   servers and a real toolchain. Steer to `s-2vcpu-4gb`, or `s-1vcpu-2gb`
-   `--swap 2G` as a floor (see Step 2b).
-2. **Install.** Copy `scripts/setup-claude-code.sh` to the droplet, run it as
-   the sudo user: `bash setup-claude-code.sh --name <droplet-name> --service`.
-   It installs Node 22 (from nodejs.org — apt only has 18), Claude Code, tmux,
-   makes `~/projects/scratch`, and installs a `systemd --user` unit + linger so
-   Remote Control survives reboot.
-3. **Log in** (interactive — you can't do it for them, but you can relay). In
-   an SSH session: `cd ~/projects/scratch && claude`, choose the subscription
+1. **Sizing.** Claude Code needs Node 22 and each Remote Control server idles
+   ~150–300 MB on top of that. Steer to `s-2vcpu-4gb`, or `s-1vcpu-2gb`
+   `--swap 2G` as a floor for one or two servers (see Step 2b).
+2. **Name the first server.** A Remote Control server serves **one directory**
+   and appears as **one named session** in `claude.ai/code` and the mobile Code
+   tab. Ask the user what to call this first one — it becomes
+   `~/projects/<name>` and the session label, so it should mean something
+   (`sandbox` for throwaway work, or a project/repo name). `[a-z0-9-]` only.
+   They can add more servers later.
+3. **Install.** Copy `scripts/setup-claude-code.sh` to the droplet, run it as
+   the sudo user: `bash setup-claude-code.sh --name <first-server-name>
+   --service`. It installs Node 22 (from nodejs.org — apt only has 18), Claude
+   Code, `tmux`, `git`; makes `~/projects/<name>`; and installs the templated
+   `claude-rc@.service` unit + linger so servers survive reboot.
+4. **Log in** (interactive — you can't do it for them, but you can relay). In
+   an SSH session: `cd ~/projects/<name> && claude`, choose the subscription
    option. Claude Code prints an OAuth URL and waits for a pasted code. Give
    the URL to the user; they approve in a browser signed into their Claude
    (Pro/Max) account and paste back the `<code>#<state>` string; you feed it in
    (via `tmux send-keys` if driving a tmux session). Then accept the workspace
-   trust dialog and `/exit`.
-4. **Start it.** `systemctl --user enable --now claude-rc`, then
-   `systemctl --user status claude-rc`. Without a TTY, `claude remote-control`
-   skips its y/n gate and just connects.
-5. **Hand off.** Give the user the session URL
+   trust dialog and `/exit`. Login is once per droplet; **trust is per
+   directory**.
+5. **Start it.** `systemctl --user enable --now claude-rc@<name>`, then
+   `systemctl --user status claude-rc@<name>`. Without a TTY,
+   `claude remote-control` skips its y/n gate and just connects.
+6. **Hand off.** Give the user the session URL
    (`https://claude.ai/code?environment=<env id>`) and tell them it also shows
-   as `<droplet-name>` in `claude.ai/code` and the mobile **Code** tab. Mention
+   as `<name>` in `claude.ai/code` and the mobile **Code** tab. Mention
    `/config` → push notifications.
 
-Add a note to the droplet's memory entry that it runs Remote Control, with the
-session name and the `systemctl --user … claude-rc` management commands.
+**More servers / repos.** To add another directory or clone a repo into its own
+session: on the droplet, `./add-rc-server.sh --name <other> [--repo <git-url>]`,
+then trust the dir and `systemctl --user enable --now claude-rc@<other>`. For a
+**private** repo the droplet needs GitHub auth first (`gh auth login` device
+flow, a deploy key, or a PAT) — this is *not* part of droplet setup; walk the
+user through it from `references/remote-control.md` → "Private GitHub
+repositories" only when they need it.
+
+Add a note to the droplet's memory entry that it runs Remote Control, listing
+the server name(s) and the `systemctl --user … claude-rc@<name>` commands.
 
 No firewall change is needed — Remote Control is outbound HTTPS only.
 

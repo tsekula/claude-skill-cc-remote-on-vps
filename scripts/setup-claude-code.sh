@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Run ON the droplet as the sudo user (not root).
-# Installs Node 22 + Claude Code, prepares a project directory, and optionally
-# installs a systemd --user service that keeps `claude remote-control` running
-# across logouts and reboots.
+# Installs Node 22 + Claude Code, installs a TEMPLATED systemd --user unit for
+# Remote Control, and sets up the FIRST server instance.
+#
+# Each Remote Control server serves one directory under ~/projects and appears
+# as one named session in claude.ai/code and the Claude mobile Code tab. This
+# script does the first one; add more later with add-rc-server.sh.
 #
 # It does NOT log you in — `claude` login is interactive (browser + paste a
 # code). Run this, then follow the printed steps.
@@ -10,32 +13,38 @@
 # Assumes a Debian-family image (matches the digitalocean-droplet skill default).
 set -euo pipefail
 
-PROJECT_DIR="$HOME/projects/scratch"
-SESSION_NAME="$(hostname)"
+SESSION_NAME="sandbox"
 INSTALL_SERVICE=0
 
 usage() {
   cat >&2 <<EOF
-Usage: setup-claude-code.sh [options]
+Usage: setup-claude-code.sh --name NAME [--service]
 
-  --project-dir PATH   Directory Remote Control serves (default: ~/projects/scratch)
-  --name NAME          Remote Control session name (default: hostname, "$SESSION_NAME")
-  --service            Also install + enable the systemd --user service and linger
+  --name NAME   Name of the first Remote Control server. Becomes the directory
+                ~/projects/NAME and the session name shown in claude.ai/code
+                and the mobile Code tab. Pick something meaningful for what
+                you'll do there (e.g. "sandbox" for throwaway work, or a repo
+                name). [a-z0-9-] only. Default: sandbox
+  --service     Install + enable the systemd --user unit (survives reboot).
+                Without it you get tmux-only instructions.
 EOF
   exit 2
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --project-dir) PROJECT_DIR="$2"; shift 2 ;;
-    --name)        SESSION_NAME="$2"; shift 2 ;;
-    --service)     INSTALL_SERVICE=1; shift ;;
-    -h|--help)     usage ;;
+    --name)    SESSION_NAME="$2"; shift 2 ;;
+    --service) INSTALL_SERVICE=1; shift ;;
+    -h|--help) usage ;;
     *) echo "Unknown argument: $1" >&2; usage ;;
   esac
 done
 
 [[ $EUID -ne 0 ]] || { echo "ERROR: run as your normal sudo user, not root." >&2; exit 1; }
+[[ "$SESSION_NAME" =~ ^[a-z0-9-]+$ ]] \
+  || { echo "ERROR: --name must be [a-z0-9-] (got '$SESSION_NAME')" >&2; exit 1; }
+
+PROJECT_DIR="$HOME/projects/$SESSION_NAME"
 
 # --- 1. Node 22 (Claude Code needs >=22; Ubuntu 24.04 apt only has 18) --------
 need_node=1
@@ -61,44 +70,45 @@ if [[ "$need_node" -eq 1 ]]; then
 fi
 echo "node $(node --version), npm $(npm --version)"
 
-# --- 2. tmux (handy for attaching) + Claude Code -----------------------------
-if ! command -v tmux >/dev/null 2>&1; then
+# --- 2. tmux + git + Claude Code -------------------------------------------
+pkgs=()
+command -v tmux >/dev/null 2>&1 || pkgs+=(tmux)
+command -v git  >/dev/null 2>&1 || pkgs+=(git)
+if [[ ${#pkgs[@]} -gt 0 ]]; then
   sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tmux
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${pkgs[@]}"
 fi
 echo "Installing Claude Code ..."
 sudo /usr/local/bin/npm install -g @anthropic-ai/claude-code >/dev/null
 hash -r
 echo "Claude Code $(claude --version)"
 
-# --- 3. project directory ---------------------------------------------------
+# --- 3. first project directory ------------------------------------------
 mkdir -p "$PROJECT_DIR"
-echo "Project directory: $PROJECT_DIR"
+echo "First Remote Control directory: $PROJECT_DIR"
 
-# --- 4. optional systemd --user service -----------------------------------
+# --- 4. templated systemd --user unit ----------------------------------
 if [[ "$INSTALL_SERVICE" -eq 1 ]]; then
-  echo "Installing systemd --user service 'claude-rc' ..."
+  echo "Installing templated systemd --user unit 'claude-rc@' ..."
   mkdir -p "$HOME/.config/systemd/user"
-  unit="$HOME/.config/systemd/user/claude-rc.service"
-  # Template lives next to this script when run from the skill; fall back to inline.
-  tpl="$(dirname "$0")/../assets/claude-rc.service"
+  unit="$HOME/.config/systemd/user/claude-rc@.service"
+  tpl="$(dirname "$0")/../assets/claude-rc@.service"
   if [[ -f "$tpl" ]]; then
-    sed -e "s#__PROJECT_DIR__#${PROJECT_DIR}#g" \
-        -e "s#__SESSION_NAME__#${SESSION_NAME}#g" "$tpl" > "$unit"
+    cp "$tpl" "$unit"
   else
-    cat > "$unit" <<EOF
+    cat > "$unit" <<'EOF'
 [Unit]
-Description=Claude Code Remote Control (${SESSION_NAME})
+Description=Claude Code Remote Control (%i)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=${PROJECT_DIR}
+WorkingDirectory=%h/projects/%i
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=TERM=dumb
 Environment=NO_COLOR=1
-ExecStart=/usr/local/bin/claude remote-control --name ${SESSION_NAME}
+ExecStart=/usr/local/bin/claude remote-control --name %i
 Restart=on-failure
 RestartSec=10
 StandardOutput=null
@@ -108,44 +118,44 @@ StandardError=journal
 WantedBy=default.target
 EOF
   fi
-  # linger lets the user service run with no active login (i.e. after reboot)
+  # linger lets user services run with no active login (i.e. after reboot)
   sudo loginctl enable-linger "$USER"
   systemctl --user daemon-reload
-  echo
-  echo "Service installed but NOT started — you must log in first:"
-else
-  echo
 fi
 
-# --- 5. next steps --------------------------------------------------------
+# --- 5. next steps -----------------------------------------------------
 cat <<EOF
 
-Next steps (interactive, do these yourself in this SSH session):
+Next steps (interactive — do these yourself in this SSH session):
 
-  1. cd "$PROJECT_DIR" && claude
-       - pick "Claude account with subscription"
-       - open the printed URL in a browser signed in to your Claude (Pro/Max)
-         account, approve, paste the code back
-       - accept the workspace trust dialog
-       - /exit
+  1. Log in and trust the directory:
+       cd "$PROJECT_DIR" && claude
+         - choose "Claude account with subscription"
+         - open the printed URL in a browser signed in to your Claude (Pro/Max)
+           account, approve, paste the code back
+         - accept the workspace trust dialog
+         - /exit
 EOF
 
 if [[ "$INSTALL_SERVICE" -eq 1 ]]; then
   cat <<EOF
-  2. systemctl --user enable --now claude-rc
-     systemctl --user status claude-rc --no-pager
-       - the session shows up as "$SESSION_NAME" at claude.ai/code and in the
-         Claude mobile app's Code tab
-  3. journalctl --user -u claude-rc -n 20 --no-pager   # if it doesn't connect
+  2. Start the first server:
+       systemctl --user enable --now claude-rc@$SESSION_NAME
+       systemctl --user status claude-rc@$SESSION_NAME --no-pager
+     It shows up as "$SESSION_NAME" at claude.ai/code and in the mobile Code tab.
+     If it doesn't connect:
+       journalctl --user -u claude-rc@$SESSION_NAME -n 20 --no-pager
 
-  Manage it: systemctl --user {restart,stop,disable} claude-rc
+  Manage:  systemctl --user {restart,stop,disable} claude-rc@$SESSION_NAME
+  Add more: ./add-rc-server.sh --name <other> [--repo <git-url>]
 EOF
 else
   cat <<EOF
-  2. tmux new -s cc
-     cd "$PROJECT_DIR" && claude remote-control --name "$SESSION_NAME"
-       - Ctrl-b then d to detach; it keeps running after you log out
-       - reattach later with: tmux attach -t cc
-       - (re-run scripts/setup-claude-code.sh --service to make this survive reboot)
+  2. Start the first server in tmux:
+       tmux new -s $SESSION_NAME
+       cd "$PROJECT_DIR" && claude remote-control --name "$SESSION_NAME"
+         - Ctrl-b then d to detach; keeps running after logout
+         - reattach: tmux attach -t $SESSION_NAME
+     Re-run with --service to make it survive reboot and get the claude-rc@ unit.
 EOF
 fi

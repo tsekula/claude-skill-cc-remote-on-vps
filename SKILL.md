@@ -1,5 +1,5 @@
 ---
-name: claude-remote-vps
+name: remote-on-vps
 description: >-
   Stand up a Linux VPS on DigitalOcean (doctl) or Hetzner Cloud (hcloud) that
   runs Claude Code with Remote Control, so it can be driven from claude.ai/code
@@ -16,7 +16,7 @@ description: >-
   created and clean up after it (see Step 8).
 ---
 
-# Claude Remote Control on VPS
+# Remote Control on VPS
 
 This skill takes a user from "I want a new server" to "I can `ssh` in as a
 non-root user, with passwords disabled and a firewall up, and drive Claude Code

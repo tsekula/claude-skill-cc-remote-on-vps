@@ -1,6 +1,6 @@
-# Claude Remote Control on VPS
+# Remote Control on VPS
 
-*(skill name `claude-remote-vps`; repo `claude-droplet`)*
+*(skill name `remote-on-vps`; repo `claude-droplet`)*
 
 A Claude Code skill that stands up a Linux VPS on **DigitalOcean** (`doctl`) or
 **Hetzner Cloud** (`hcloud`) to run **Claude Code with Remote Control** — driven
@@ -33,7 +33,7 @@ claude-rc@<name>`).
 
 ```bash
 mkdir -p ~/.claude/skills
-ln -s "$(pwd)" ~/.claude/skills/claude-remote-vps
+ln -s "$(pwd)" ~/.claude/skills/remote-on-vps
 ```
 
 Then in Claude Code: "spin up a new Hetzner server called web-01 in Nuremberg",
@@ -51,7 +51,7 @@ or "make me a DigitalOcean droplet in Frankfurt".
 The symlink command above is bash. Equivalents:
 
 - **macOS:** same as Linux —
-  `ln -s "$(pwd)" ~/.claude/skills/claude-remote-vps`
+  `ln -s "$(pwd)" ~/.claude/skills/remote-on-vps`
 - **Windows (PowerShell, as admin):**
-  `New-Item -ItemType SymbolicLink -Path "$HOME\.claude\skills\claude-remote-vps" -Target (Get-Location)`
+  `New-Item -ItemType SymbolicLink -Path "$HOME\.claude\skills\remote-on-vps" -Target (Get-Location)`
 - Or just copy the folder into `~/.claude/skills/` instead of symlinking.

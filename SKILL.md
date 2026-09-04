@@ -60,9 +60,14 @@ Scripts:
 Confirm the tools and inputs before touching anything, because a half-created
 server still costs money and a botched `sshd` config can lock everyone out.
 
-1. **Pick the provider.** Ask the user: **DigitalOcean** or **Hetzner Cloud**?
-   Infer it if they've already signalled one — "droplet" / `doctl` /
-   `nyc3`-style slugs → DigitalOcean; "Hetzner" / `hcloud` / `nbg1` → Hetzner.
+1. **Pick the provider.** This skill has **no default provider.** Infer it
+   *only* from an explicit signal in the user's message — the words
+   "DigitalOcean" / "Hetzner", a CLI name (`doctl` / `hcloud`), or a
+   region/type slug (`nyc3`, `fra1` → DigitalOcean; `nbg1`, `cx23` → Hetzner).
+   A bare "let's go", "set one up", or the slash command alone is **not** a
+   signal — if there is no signal, **stop and ask "DigitalOcean or Hetzner?"**
+   before running anything. Do not assume one, and do not invent a reason
+   (e.g. the command you were invoked with) for choosing.
    Everything provider-specific from here (CLI, auth, regions, sizes, teardown)
    is in **`references/digitalocean.md`** or **`references/hetzner.md`** — use
    the one for the chosen provider; call it `<provider ref>` below.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run ON the droplet as the sudo user, AFTER setup-claude-code.sh.
+# Run ON the server as the sudo user, AFTER setup-claude-code.sh.
 # Adds another Remote Control server: its own directory under ~/projects, its
 # own named session in claude.ai/code, its own systemd instance. Optionally
 # clones a git repo into it first.
@@ -14,7 +14,7 @@ Usage: add-rc-server.sh --name NAME [--repo GIT_URL]
 
   --name NAME     Directory ~/projects/NAME and session name. [a-z0-9-] only.
   --repo GIT_URL  Clone this repo into ~/projects/NAME first. For a PRIVATE
-                  repo, set up auth on the droplet first — see
+                  repo, set up auth on the server first — see
                   references/remote-control.md, "Private GitHub repositories".
 EOF
   exit 2
@@ -55,7 +55,7 @@ if [[ -n "$REPO" ]]; then
     if ! git clone "$REPO" "$DIR"; then
       cat >&2 <<EOF
 
-Clone failed. If this is a private repo you need auth on the droplet first.
+Clone failed. If this is a private repo you need auth on the server first.
 See references/remote-control.md, "Private GitHub repositories" — the quickest
 is: gh auth login (device flow), or add a deploy key, or use a PAT in the URL.
 Then re-run this script.

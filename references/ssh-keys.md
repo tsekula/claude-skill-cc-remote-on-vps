@@ -46,7 +46,7 @@ Get-ChildItem ~\.ssh\*.pub -ErrorAction SilentlyContinue
 ```
 
 If a `.pub` file is listed, they have a key and can reuse it, or make a fresh
-one dedicated to this droplet (cleaner to revoke later). If nothing lists,
+one dedicated to this server (cleaner to revoke later). If nothing lists,
 generate one.
 
 ## 2. Generate a key
@@ -56,12 +56,12 @@ it for them.
 
 **macOS / Linux:**
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_<droplet-name> -C "<droplet-name>" -N ""
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_<server-name> -C "<server-name>" -N ""
 ```
 
 **Windows (PowerShell):**
 ```powershell
-ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\id_ed25519_<droplet-name>" -C "<droplet-name>" -N '""'
+ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\id_ed25519_<server-name>" -C "<server-name>" -N '""'
 ```
 (If `$env:USERPROFILE\.ssh` doesn't exist yet: `mkdir "$env:USERPROFILE\.ssh"`.)
 
@@ -69,7 +69,7 @@ Flag by flag:
 
 - `-t ed25519` — the modern, strong key type.
 - `-f ...` — where the pair is written and what it's named. Naming it after the
-  droplet makes it obvious later which key belongs to which server.
+  server name makes it obvious later which key is which.
 - `-C "..."` — a label stored inside the public file, for your future self.
 - `-N ""` (PowerShell: `-N '""'`) — no passphrase, so the key just works. This
   is the simplest choice for a first server. For an extra layer — a password
@@ -77,19 +77,19 @@ Flag by flag:
   **without** the `-N` part in their own terminal, so they can type the
   passphrase privately. Claude can't type it for them. A passphrase can also be
   added later:
-  `ssh-keygen -p -f ~/.ssh/id_ed25519_<droplet-name>`.
+  `ssh-keygen -p -f ~/.ssh/id_ed25519_<server-name>`.
 
 ## 3. What was created, and how to look after it
 
-Two files, e.g. for `<droplet-name>` = `web-01`:
+Two files, e.g. for `<server-name>` = `web-01`:
 
 | File | What it is | Rule |
 |------|-----------|------|
 | `id_ed25519_web-01` | **private** key | Never leaves `~/.ssh`. Don't put it in Dropbox/OneDrive/iCloud/Google Drive. Don't paste it into chat. |
-| `id_ed25519_web-01.pub` | **public** key | Safe to share. This is what goes on the droplet (the skill handles that). |
+| `id_ed25519_web-01.pub` | **public** key | Safe to share. This is what goes on the server (the skill handles that). |
 
 **Back it up once, now.** If the private key is lost, key-based login is gone
-and recovery means using the DigitalOcean web console. A good backup is a
+and recovery means the provider's web console or rescue mode. A good backup is a
 secure note in a password manager (1Password, Bitwarden, Apple Passwords, …).
 
 **Permissions:**
@@ -99,31 +99,31 @@ secure note in a password manager (1Password, Bitwarden, Apple Passwords, …).
 - **Windows:** normally fine as created. If `ssh` later complains the key is
   "too open" / "bad permissions", lock the file to your account:
   ```powershell
-  icacls "$env:USERPROFILE\.ssh\id_ed25519_<droplet-name>" /inheritance:r /grant:r "$($env:USERNAME):(R)"
+  icacls "$env:USERPROFILE\.ssh\id_ed25519_<server-name>" /inheritance:r /grant:r "$($env:USERNAME):(R)"
   ```
 
 ## 4. Optional niceties
 
 **Remember the passphrase (if they set one) via the agent:**
 
-- **macOS:** `ssh-add --apple-use-keychain ~/.ssh/id_ed25519_<droplet-name>`
+- **macOS:** `ssh-add --apple-use-keychain ~/.ssh/id_ed25519_<server-name>`
   (stores it in Keychain; re-added automatically on reboot).
 - **Windows:** start the agent once (admin PowerShell:
   `Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent`),
-  then `ssh-add "$env:USERPROFILE\.ssh\id_ed25519_<droplet-name>"`.
-- **Linux:** `ssh-add ~/.ssh/id_ed25519_<droplet-name>` (agent usually already
+  then `ssh-add "$env:USERPROFILE\.ssh\id_ed25519_<server-name>"`.
+- **Linux:** `ssh-add ~/.ssh/id_ed25519_<server-name>` (agent usually already
   running under the desktop session).
 
-**Host alias** so future logins are just `ssh <droplet-name>` — add to
+**Host alias** so future logins are just `ssh <server-name>` — add to
 `~/.ssh/config` (Windows: `C:\Users\<you>\.ssh\config`, no file extension):
 
 ```
-Host <droplet-name>
+Host <server-name>
     HostName <ip>
     User <user>
     Port <port>
-    IdentityFile ~/.ssh/id_ed25519_<droplet-name>
+    IdentityFile ~/.ssh/id_ed25519_<server-name>
 ```
 
 On Windows the `IdentityFile` line may need the full path,
-`C:\Users\<you>\.ssh\id_ed25519_<droplet-name>`.
+`C:\Users\<you>\.ssh\id_ed25519_<server-name>`.

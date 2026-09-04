@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Create a DigitalOcean droplet with doctl and wait until SSH is reachable.
-# Prints the public IPv4 as the final line and writes it to ./.droplet-ip.
+# Prints the public IPv4 as the final line and writes it to ./.server-ip.
+# The Hetzner sibling is scripts/provision-hetzner.sh.
 set -euo pipefail
 
 NAME=""
@@ -12,7 +13,7 @@ EXTRA=""
 
 usage() {
   cat >&2 <<'EOF'
-Usage: provision.sh --name NAME --region SLUG [options]
+Usage: provision-digitalocean.sh --name NAME --region SLUG [options]
 
   --name NAME        Droplet name (required)
   --region SLUG      Region slug, e.g. nyc3 (required)
@@ -41,13 +42,13 @@ done
 [[ -n "$REGION" ]] || { echo "ERROR: --region is required" >&2; usage; }
 
 command -v doctl >/dev/null 2>&1 || {
-  echo "ERROR: doctl not found. See references/doctl-setup.md for install steps" >&2
+  echo "ERROR: doctl not found. See references/digitalocean.md for install steps" >&2
   echo "       (macOS/Linux/Windows/Docker), then run 'doctl auth init'." >&2
   exit 1
 }
 doctl account get >/dev/null 2>&1 || {
   echo "ERROR: doctl is not authenticated. Run 'doctl auth init'" >&2
-  echo "       (or set DIGITALOCEAN_ACCESS_TOKEN). See references/doctl-setup.md." >&2
+  echo "       (or set DIGITALOCEAN_ACCESS_TOKEN). See references/digitalocean.md." >&2
   exit 1
 }
 [[ -f "$SSH_KEY" ]] || {
@@ -98,8 +99,8 @@ for i in $(seq 1 60); do
   if (exec 3<>"/dev/tcp/$IP/22") 2>/dev/null; then
     exec 3>&- 3<&-
     echo " up."
-    echo "$IP" > ./.droplet-ip
-    echo "Wrote IP to ./.droplet-ip"
+    echo "$IP" > ./.server-ip
+    echo "Wrote IP to ./.server-ip"
     echo "--- droplet ready ---"
     echo "$IP"
     exit 0

@@ -1,8 +1,8 @@
-# Run Claude Code on the droplet with Remote Control
+# Run Claude Code on the server with Remote Control
 
-Remote Control keeps a `claude` process running **on the droplet** and lets you
+Remote Control keeps a `claude` process running **on the box** and lets you
 drive it from `claude.ai/code` and the Claude mobile app (Code tab). Execution
-and the filesystem stay on the droplet; only chat messages and tool results
+and the filesystem stay on the box; only chat messages and tool results
 travel through Anthropic's API over **outbound HTTPS**. No inbound ports, so the
 skill's UFW rules need no change.
 
@@ -22,7 +22,7 @@ servers**, one per directory, each its own systemd instance. See
 
 - **Claude Pro or Max** (Team/Enterprise need an Owner to enable the Remote
   Control toggle). API-key auth does **not** work.
-- On the droplet, none of these set in the environment (they disable Remote
+- On the box, none of these set in the environment (they disable Remote
   Control): `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` pointing off
   `api.anthropic.com`, `DISABLE_TELEMETRY`, `DO_NOT_TRACK`,
   `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_GROWTHBOOK`.
@@ -36,7 +36,7 @@ the directory `~/projects/<name>` **and** the session label they'll see in
 `claude.ai/code` and the mobile Code tab, so it should mean something —
 `sandbox` for throwaway experiments, or a project/repo name. `[a-z0-9-]` only.
 
-Copy `scripts/setup-claude-code.sh` to the droplet and run it **as the sudo
+Copy `scripts/setup-claude-code.sh` to the box and run it **as the sudo
 user** (not root):
 
 ```bash
@@ -54,7 +54,7 @@ Flags: `--name NAME` (default `sandbox`), `--service`.
 
 ## 2. Log in (interactive, headless-friendly)
 
-Claude Code login needs a browser. On a headless droplet it prints a URL and
+Claude Code login needs a browser. On a headless box it prints a URL and
 waits for a pasted code — no localhost callback, so no SSH tunnel needed.
 
 ```bash
@@ -71,7 +71,7 @@ cd ~/projects/<name> && claude
   untrusted directory, and never from `$HOME`).
 - `/exit`.
 
-Login is once per droplet — the token in `~/.claude*` covers every server.
+Login is once per box — the token in `~/.claude*` covers every server.
 Workspace trust, though, is **per directory**: repeat the `cd … && claude` +
 trust step for each new server directory.
 
@@ -103,7 +103,7 @@ status-line redraw.
 ```bash
 tmux new -s <name>
 cd ~/projects/<name> && claude remote-control --name <name>
-#   Ctrl-b then d   to detach; runs until the droplet reboots
+#   Ctrl-b then d   to detach; runs until the box reboots
 ```
 
 Reattach with `tmux attach -t <name>`. Re-run `setup-claude-code.sh --service`
@@ -115,7 +115,7 @@ The unit is templated (`claude-rc@.service`), so each server is an instance
 named after its directory under `~/projects`:
 
 ```bash
-# on the droplet, as the sudo user, after setup-claude-code.sh
+# on the box, as the sudo user, after setup-claude-code.sh
 ./add-rc-server.sh --name myapp --repo git@github.com:me/myapp.git
 #   (omit --repo for an empty directory)
 
@@ -127,7 +127,7 @@ systemctl --user enable --now claude-rc@myapp
 checks the templated unit is installed, and prints the trust + enable steps. Now
 `claude.ai/code` lists `sandbox`, `myapp`, … each driving its own directory.
 
-Running many at once: each server idles ~150–300 MB. On a 2 GB droplet keep it
+Running many at once: each server idles ~150–300 MB. On a 2 GB box keep it
 to 2–3; sensible on 4 GB+. Stop ones you're not using with
 `systemctl --user stop claude-rc@<name>` (state is kept; `start` brings it
 back).
@@ -139,7 +139,7 @@ git worktree so parallel sessions in one repo don't collide.
 ## Private GitHub repositories
 
 `add-rc-server.sh --repo` just runs `git clone`; a private repo needs auth **on
-the droplet** first. This is not part of droplet setup — set it up when needed.
+the box** first. This is not part of server setup — set it up when needed.
 Pick one:
 
 - **GitHub CLI, device flow** (easiest headless):
@@ -158,7 +158,7 @@ Pick one:
   cat ~/.ssh/id_<repo>.pub
   ```
   Add that public key at the repo's **Settings → Deploy keys** (check "Allow
-  write access" only if the droplet needs to push). Then add to `~/.ssh/config`:
+  write access" only if the box needs to push). Then add to `~/.ssh/config`:
   ```
   Host github.com-<repo>
       HostName github.com
@@ -190,7 +190,7 @@ project dir also reattaches (within ~4h of the last server there).
 
 ## Push notifications
 
-In a plain `claude` session on the droplet: `/config` → enable **Push when
+In a plain `claude` session on the box: `/config` → enable **Push when
 Claude decides** and/or **Push when actions required**. Needs the mobile app
 installed and signed in to the same account.
 
@@ -200,9 +200,9 @@ installed and signed in to the same account.
   linger). Workspace trust and the login token persist in `~/.claude*`.
 - **Updating Claude Code**: `sudo npm i -g @anthropic-ai/claude-code`, then
   `systemctl --user restart 'claude-rc@*'`.
-- **Teardown**: destroying the droplet (skill Step 7) takes every Remote Control
+- **Teardown**: destroying the box (skill Step 7) takes every Remote Control
   session, the login token, and the units with it — nothing to undo on the
   account side. The sessions just disappear from `claude.ai/code`.
 - **One account, shared control**: anyone signed into that Claude account can
-  drive the droplet while Remote Control is up, and the transcript is stored on
+  drive the box while Remote Control is up, and the transcript is stored on
   Anthropic servers per the Data usage policy.

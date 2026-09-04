@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run ON a fresh DigitalOcean droplet as root.
+# Run ON a fresh cloud server (Ubuntu) as root.
 # Creates a sudo user, installs an SSH key for them, enables UFW,
 # disables root login + password auth, and optionally adds a swapfile.
 # Safe to re-run.
@@ -22,7 +22,7 @@ Usage: harden.sh --user NAME --pubkey "ssh-ed25519 AAAA... comment" [--port N] [
   --pubkey STR    The full public key line to authorize (required)
   --port N        SSH port to run on (default: 22)
   --swap SIZE     Create a swapfile of this size if none exists, e.g. 2G, 512M.
-                  Recommended on droplets under 4 GB RAM that run build tools
+                  Recommended on servers under 4 GB RAM that run build tools
                   or Claude Code. Omit to skip swap entirely.
 EOF
   exit 2

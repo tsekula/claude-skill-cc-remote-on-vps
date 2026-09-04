@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run ON the droplet as the sudo user (not root).
+# Run ON the server as the sudo user (not root).
 # Installs Node 22 + Claude Code, installs a TEMPLATED systemd --user unit for
 # Remote Control, and sets up the FIRST server instance.
 #
@@ -10,7 +10,7 @@
 # It does NOT log you in — `claude` login is interactive (browser + paste a
 # code). Run this, then follow the printed steps.
 #
-# Assumes a Debian-family image (matches the digitalocean-droplet skill default).
+# Assumes a Debian-family image (matches the skill default).
 set -euo pipefail
 
 SESSION_NAME="sandbox"

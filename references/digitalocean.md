@@ -1,4 +1,9 @@
-# Installing and authenticating `doctl`
+# DigitalOcean provider guide (`doctl`)
+
+Provider-specific half of the skill: how to install and authenticate `doctl`,
+pick a region and size, run `provision-digitalocean.sh`, and tear a droplet
+down. The provider-neutral flow (hardening, verify, Remote Control) is in
+`SKILL.md`. Hetzner's equivalent is `references/hetzner.md`.
 
 `doctl` is DigitalOcean's official CLI. This skill needs it on `PATH` and
 authenticated with an API token that has **read and write** scope.
@@ -259,3 +264,99 @@ read -rsp 'token: ' TOK && echo && \
 - `401` — regenerate the token. Make sure it's a **Personal Access Token**
   (`dop_v1_` + 64 hex chars), not a Spaces key, and that the paste wasn't
   truncated or padded with a trailing space.
+
+---
+
+## 6. Regions & sizes (SKILL.md Step 2)
+
+### Regions
+
+```bash
+doctl compute region list --format Name,Slug,Available --no-header | grep -i '\btrue$'
+```
+
+Present regions by **full name** with the slug in parentheses —
+`Frankfurt 1 (fra1)`. Group by continent (North America: New York, San
+Francisco, Toronto, Atlanta, …; Europe: Amsterdam, London, Frankfurt;
+Asia-Pacific: Singapore, Bangalore, Sydney). Recommend the one closest to where
+traffic originates. **On DigitalOcean, price does not vary by region** — latency
+is the only differentiator.
+
+### Sizes — live prices, cheapest first
+
+```bash
+doctl compute size list \
+  --format Slug,Memory,VCPUs,Disk,PriceMonthly,PriceHourly --no-header \
+  | grep '^s-' | sort -k5 -n | head -n 8
+```
+
+Memory is MB, disk GB, price USD. The `-amd` / `-intel` suffixes are
+dedicated-CPU variants (~$1–2 more) — recommend the plain `s-Nvcpu-Ngb` slug.
+
+Map SKILL.md Step 2's RAM target to a slug:
+
+| Step 2 RAM target | DigitalOcean slug | ~USD/mo |
+|---|---|---|
+| ~512 MB (bastion / tiny static site) | `s-1vcpu-512mb-10gb` | $4 |
+| ~1 GB (small web app / API) | `s-1vcpu-1gb` | $6 |
+| ~2 GB (Claude Code floor, + `--swap 2G`) | `s-1vcpu-2gb` | $12 |
+| ~4 GB (Claude Code comfortable / Docker / CI) | `s-2vcpu-4gb` | $24 |
+
+Prices drift — always show the live `size list` output, don't quote these.
+
+### DigitalOcean facts
+
+- Billing is hourly with the monthly figure as a cap; a short test costs a cent
+  or two. Powering a droplet **off does not stop billing** — only destroying it
+  does (Step 7).
+- Resizing up later is possible but needs a brief reboot; disk can only grow,
+  never shrink.
+- Size availability varies slightly by region/account. If
+  `provision-digitalocean.sh` fails with a size/region error, re-list for that
+  region and pick another.
+- DigitalOcean allows **duplicate droplet names** — re-running
+  `provision-digitalocean.sh` with the same name makes a *second* droplet.
+  `doctl compute droplet list` first if a re-run is possible.
+- A DigitalOcean Cloud Firewall is optional and separate; the skill's host-level
+  UFW is sufficient on its own.
+
+---
+
+## 7. Provision (SKILL.md Step 3)
+
+```bash
+scripts/provision-digitalocean.sh \
+  --name web-01 \
+  --region fra1 \
+  --size s-1vcpu-1gb \
+  --image ubuntu-24-04-x64 \
+  --ssh-key ~/.ssh/id_ed25519_web-01.pub   # the .pub chosen in Step 1
+```
+
+- `--image` default is `ubuntu-24-04-x64`.
+- `--extra "…"` is passed verbatim to `doctl compute droplet create` — e.g.
+  `--extra "--enable-ipv6 --enable-monitoring"` or `--extra "--vpc-uuid <id>"`.
+- It registers the key with DigitalOcean if absent (matched by fingerprint, so
+  re-runs don't duplicate), creates the droplet with `--wait`, polls TCP 22,
+  writes the IPv4 to `./.server-ip`, and on failure prints the droplet ID plus
+  `doctl compute droplet delete <id>`.
+
+---
+
+## 8. Teardown (SKILL.md Step 7)
+
+```bash
+doctl compute droplet delete <id> --force
+doctl compute droplet list                       # confirm it's gone
+```
+
+Then the cleanup common to both providers (see SKILL.md Step 7), plus the
+DigitalOcean-specific one:
+
+- **One-off SSH key.** If `provision-digitalocean.sh` registered a key named
+  `<name>-<YYYYMMDD>` on the account, remove it:
+  ```bash
+  doctl compute ssh-key list
+  doctl compute ssh-key delete <id> --force
+  ```
+  Never delete the user's pre-existing personal keys.

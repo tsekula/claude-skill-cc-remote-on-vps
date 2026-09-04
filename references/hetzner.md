@@ -181,26 +181,38 @@ price for the chosen location in the next step.
 
 ```bash
 hcloud server-type list          # id, name, cores, cpu_type, arch, memory, disk
-hcloud server-type describe cx22 -o json | grep -A3 price_monthly   # EUR, per location
+# price per location (no jq needed):
+hcloud server-type describe cx23 -o json | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['location'], p['price_monthly']['net'], '/mo net') for p in d['prices']]"
 ```
 
-`server-type list` has **no price**. Get price per location from
-`server-type describe <type> -o json` (`.prices[].price_monthly.gross`, EUR incl.
-VAT) or from https://www.hetzner.com/cloud.
+`server-type list` has **no price** and the lineup **changes** (the `cx2x`
+generation was replaced by `cx23/cx33/…`; `cx11`/`cx22` no longer exist). Always
+run `server-type list` for real options and `server-type describe <t> -o json`
+for the price at the chosen location; the table below is a starting point only,
+verified 2026-09 at nbg1.
 
-Map SKILL.md Step 2's RAM target to a type (prices approximate, EUR/mo, ex-VAT,
-**plus ~€0.50/mo for the IPv4** — verify live):
+Prices are EUR/mo **net** (add ~19 % VAT where it applies), **plus ~€0.50/mo for
+the IPv4**:
 
-| Step 2 RAM target | Hetzner type | vCPU / RAM / disk | ~EUR/mo |
+| Step 2 RAM target | Hetzner type | vCPU / RAM / disk | ~EUR/mo net (nbg1) |
 |---|---|---|---|
-| ~1 GB (smallest AMD) | `cpx11` | 2 / 2 GB / 40 GB | ~5.49 |
-| ~2 GB (Claude Code floor, + `--swap 2G`) | `cx22` | 2 / 4 GB / 40 GB | ~4.49 |
-| ~4 GB (Claude Code comfortable / Docker) | `cx22` already has 4 GB; step up to `cpx21` / `cx32` for more cores | 3 / 4 GB / 80 GB | ~8–10 |
-| Arm (cheapest cores-per-euro) | `cax11` | 2 / 4 GB / 40 GB (Ampere Arm) | ~5.99 |
+| ~512 MB / ~1 GB | *(no cheap sub-4 GB option in the EU any more)* | — | — |
+| ~2–4 GB — the **default & Claude Code floor** | **`cx23`** | 2 / 4 GB / 40 GB (x86) | **~5.49** — cheapest overall |
+| ~4 GB Arm (only for Arm-native workloads) | `cax11` | 2 / 4 GB / 40 GB (Ampere Arm) | ~5.99 |
+| ~8 GB (Claude Code + Docker / bigger builds) | `cx33` | 4 / 8 GB / 80 GB (x86) | ~8.49 |
 
-Note Hetzner's entry x86 type `cx22` already gives 2 vCPU + 4 GB, so the
-"Claude Code floor" and "comfortable" targets often land on the **same** type —
-`cx22` is a good default. `cx11` (the old ~€3.79 model) has been retired.
+Notes:
+
+- **`cx23` is both the cheapest type and already 2 vCPU / 4 GB**, so the "small
+  app", "Claude Code floor" and "Claude Code comfortable" targets all land on it
+  — it's the sensible default. Step up to `cx33` only for 8 GB.
+- **Avoid the `cpx*` (AMD) line for small servers** — the 2026 price rise made
+  `cpx12` (1 vCPU / 2 GB) *more expensive* than `cx23`.
+- `cax*` types are **Arm (aarch64)**. `provision-hetzner.sh` + `harden.sh` +
+  `setup-claude-code.sh` all handle Arm (the Node 22 installer picks the arm64
+  build), and Hetzner serves the matching `ubuntu-24.04` image automatically.
+- There is **no cheap sub-4 GB tier in EU locations** now; `cx23` (4 GB) is the
+  floor. US locations (`ash`, `hil`) still have `cpx11` (2 GB) but cost more.
 
 ### Images
 
@@ -234,12 +246,12 @@ Common names: **`ubuntu-24.04`** (skill default), `ubuntu-22.04`, `debian-12`,
 scripts/provision-hetzner.sh \
   --name web-01 \
   --location nbg1 \
-  --type cx22 \
+  --type cx23 \
   --image ubuntu-24.04 \
   --ssh-key ~/.ssh/id_ed25519_web-01.pub   # the .pub chosen in Step 1
 ```
 
-- `--type` default is `cx22`, `--image` default `ubuntu-24.04`.
+- `--type` default is `cx23`, `--image` default `ubuntu-24.04`.
 - `--extra "…"` is passed verbatim to `hcloud server create` — e.g.
   `--extra "--user-data-from-file cloud-init.yml"`,
   `--extra "--network my-net"`, `--extra "--placement-group my-pg"`,

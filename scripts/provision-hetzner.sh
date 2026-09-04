@@ -6,7 +6,7 @@ set -euo pipefail
 
 NAME=""
 LOCATION=""
-TYPE="cx22"
+TYPE="cx23"
 IMAGE="ubuntu-24.04"
 SSH_KEY="${HOME}/.ssh/id_ed25519.pub"
 EXTRA=""
@@ -17,7 +17,8 @@ Usage: provision-hetzner.sh --name NAME --location SLUG [options]
 
   --name NAME        Server name (required)
   --location SLUG    Location slug, e.g. nbg1 fsn1 hel1 ash hil sin (required)
-  --type SLUG        Server type slug (default: cx22)
+  --type SLUG        Server type slug (default: cx23). `hcloud server-type list`
+                     for current options — Hetzner revises the lineup.
   --image SLUG       Image name (default: ubuntu-24.04)
   --ssh-key PATH     Public key file (default: ~/.ssh/id_ed25519.pub)
   --extra "ARGS"     Extra args passed verbatim to `hcloud server create`
@@ -59,18 +60,23 @@ hcloud server list >/dev/null 2>&1 || {
 }
 
 # --- Ensure the public key is registered with Hetzner -----------------------
-# Match by MD5 fingerprint so repeated runs don't create duplicate key entries.
+# `hcloud server create --ssh-key` takes a NAME or ID (not a fingerprint), so
+# match the local key's MD5 fingerprint against the registered keys to find its
+# name; register it (named "<server>-<date>") only if it isn't there yet.
 FP="$(ssh-keygen -lf "$SSH_KEY" | awk '{print $2}' | sed 's/^SHA256://')"
 KEY_FP_MD5="$(ssh-keygen -E md5 -lf "$SSH_KEY" | awk '{print $2}' | sed 's/^MD5://')"
 
-existing_fp="$(hcloud ssh-key list -o columns=fingerprint -o noheader 2>/dev/null | tr -d ' ' || true)"
-if grep -qx "$KEY_FP_MD5" <<<"$existing_fp"; then
-  echo "SSH key already registered with Hetzner (fingerprint $KEY_FP_MD5)."
+KEY_NAME="$(hcloud ssh-key list -o columns=fingerprint,name -o noheader 2>/dev/null \
+  | awk -v fp="$KEY_FP_MD5" '$1==fp {$1=""; sub(/^[ \t]+/,""); print; exit}')"
+
+if [[ -n "$KEY_NAME" ]]; then
+  echo "SSH key already registered with Hetzner as '$KEY_NAME' ($KEY_FP_MD5)."
 else
-  echo "Registering SSH key with Hetzner..."
-  hcloud ssh-key create --name "${NAME}-$(date +%Y%m%d)" --public-key-from-file "$SSH_KEY" >/dev/null
+  KEY_NAME="${NAME}-$(date +%Y%m%d)"
+  echo "Registering SSH key with Hetzner as '$KEY_NAME' ..."
+  hcloud ssh-key create --name "$KEY_NAME" --public-key-from-file "$SSH_KEY" >/dev/null
 fi
-echo "Using SSH key fingerprint: $KEY_FP_MD5 (sha256: $FP)"
+echo "Using SSH key '$KEY_NAME' (md5 $KEY_FP_MD5, sha256 $FP)"
 
 # --- Create the server -----------------------------------------------------
 echo "Creating server '$NAME' ($TYPE, $IMAGE) in $LOCATION ..."
@@ -81,7 +87,7 @@ hcloud server create \
   --location "$LOCATION" \
   --type "$TYPE" \
   --image "$IMAGE" \
-  --ssh-key "$KEY_FP_MD5" \
+  --ssh-key "$KEY_NAME" \
   $EXTRA
 
 SERVER_ID="$(hcloud server list -o columns=id,name -o noheader | awk -v n="$NAME" '$2==n {print $1}' | head -n1)"

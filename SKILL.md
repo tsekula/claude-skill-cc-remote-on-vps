@@ -171,7 +171,7 @@ scripts/provision-digitalocean.sh --name web-01 --region fra1 \
 
 # Hetzner
 scripts/provision-hetzner.sh --name web-01 --location nbg1 \
-  --type cx22 --image ubuntu-24.04 --ssh-key ~/.ssh/id_ed25519_web-01.pub
+  --type cx23 --image ubuntu-24.04 --ssh-key ~/.ssh/id_ed25519_web-01.pub
 ```
 
 Either script:

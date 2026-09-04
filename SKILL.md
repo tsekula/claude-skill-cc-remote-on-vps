@@ -9,10 +9,10 @@ description: >-
   new server" and name one of those providers or its CLI, and even if they
   don't spell out the hardening steps. Also use it when the user has an existing
   fresh server IP and wants it secured for SSH. Also handles the reverse —
-  deleting a server this skill created and cleaning up after it (see Step 7) —
-  so use it when the user wants to tear one down too. Optionally sets the server
-  up to run Claude Code with Remote Control, so it can be driven from
-  claude.ai/code or the Claude mobile app.
+  deleting a server this skill created and cleaning up after it (see Step 8) —
+  so use it when the user wants to tear one down too. By default it also sets
+  the server up to run Claude Code with Remote Control (skippable), so it can be
+  driven from claude.ai/code or the Claude mobile app.
 ---
 
 # Provision and harden a Linux VPS
@@ -33,23 +33,24 @@ Scripts:
   the server and wait until SSH answers.
 - `scripts/harden.sh` — runs **on the server** to create the sudo user,
   configure `sshd`, and enable UFW.
-- `scripts/setup-claude-code.sh` — optional, runs **on the server** to install
-  Claude Code + the first Remote Control server (see the optional section after
-  Step 6). `scripts/add-rc-server.sh` adds more.
+- `scripts/setup-claude-code.sh` — runs **on the server** to install Claude
+  Code + the first Remote Control server (Step 6, done by default).
+  `scripts/add-rc-server.sh` adds more.
 
 ## When to run which part
 
-- **Fresh start** (no server yet): Steps 1–6 — preflight (incl. picking the
-  provider), choose location/size, provision, harden, verify, summarise. Record
-  the result to memory.
+- **Fresh start** (no server yet): Steps 1–7 — preflight (incl. picking the
+  provider), choose location/size, provision, harden, verify, set up Claude Code
+  + Remote Control (Step 6, unless the user opts out), summarise + record to
+  memory.
 - **User already made a server** in the web console and gives you an IP: skip to
-  Step 4 (hardening), then verify and summarise. No provider CLI needed.
-- **Make it a Claude Code box:** after Step 6, do the optional Remote Control
-  section (`references/remote-control.md`).
+  Step 4 (hardening), then verify, Step 6, summarise. No provider CLI needed.
+- **Just set up Remote Control** on a box that's already hardened: do Step 6 on
+  its own (`references/remote-control.md`).
 - **Add another Remote Control server** to a box that's already a Claude Code
   box (a repo in its own session, another sandbox): jump to the "Add another
-  Remote Control server" subsection after the optional section.
-- **Tearing a server down:** jump to Step 7 — delete it and clean up, including
+  Remote Control server" subsection after Step 7.
+- **Tearing a server down:** jump to Step 8 — delete it and clean up, including
   the memory entry.
 
 ## Step 1 — Preflight
@@ -139,22 +140,26 @@ reference: DigitalOcean is flat across regions; **Hetzner varies by location**
 
 Pull the live price list per the reference (never quote prices from memory).
 Show the cheapest options as a small table, then **recommend based on what the
-server is for.** Ask what they'll run on it if it isn't already clear. Target
+server is for.** Ask what they'll run on it if it isn't already clear.
+
+**Default to ~4 GB (or ~2 GB + `--swap 2G`)** — Step 6 sets up Claude Code +
+Remote Control by default, and that needs the headroom. Only drop below that if
+the user has already said they want a plain bastion / no Remote Control. Target
 RAM by workload; the reference maps each target to that provider's slug:
 
 | Intended use | Target | Notes |
 |---|---|---|
-| Bastion / jump host, tiny static site, hobby script | ~512 MB | Idle footprint is tiny; any build step will OOM |
-| Small web app or API, single service | ~1 GB | The common baseline |
-| **Claude Code / an AI coding agent on the box** | **~4 GB, or ~2 GB + `--swap 2G` as a floor** | Node + Claude Code idles ~0.5–1 GB; add MCP/language servers, `npm install`, test suites and 1 GB OOMs mid-task. A 2nd vCPU keeps the agent responsive during builds. |
+| **Default — Claude Code + Remote Control (Step 6)** | **~4 GB, or ~2 GB + `--swap 2G` as a floor** | Node + Claude Code idles ~0.5–1 GB; add MCP/language servers, `npm install`, test suites and 1 GB OOMs mid-task. A 2nd vCPU keeps the agent responsive during builds. |
 | Docker / databases / CI runner | ~4 GB+ | Containers and DB caches are memory-hungry |
+| Small web app or API, single service, no Remote Control | ~1 GB | The common baseline for a plain service |
+| Bastion / jump host, tiny static site — no Remote Control | ~512 MB (DO) / smallest offered | Idle footprint is tiny; any build step will OOM. Hetzner has no cheap sub-4 GB EU tier. |
 
-If the user picks ~1 GB or smaller for a Claude Code / dev workload, flag the
-risk once (installs and builds get OOM-killed), suggest sizing up or adding
+If the user wants Remote Control (the default) but picks ~1 GB or smaller, flag
+the risk once (installs and builds get OOM-killed), suggest sizing up or adding
 swap, but respect their choice.
 
 From the reference, mention: billing is hourly with the monthly figure as a
-cap; **powering off does not stop billing** (Step 7 to actually stop it);
+cap; **powering off does not stop billing** (Step 8 to actually stop it);
 resizing up later needs a brief reboot and disk can only grow. Confirm the
 final **name + location (full name) + size** before moving on.
 
@@ -257,67 +262,26 @@ For a first-time user, offer to add the `~/.ssh/config` host alias from
 `references/ssh-keys.md` §4 so future logins are just `ssh <server-name>`
 (the reference notes the Windows path caveat).
 
-## Step 6 — Summary
+## Step 6 — Set up Claude Code + Remote Control
 
-First, print the **connection details block** below verbatim (filled in) as the
-last thing in your reply. It exists so that this Claude session — or any tool —
-can SSH into the server straight away without hunting through prose. Keep the
-exact field names; they're what a caller greps for.
+By default the skill leaves the server ready to drive Claude Code from
+`claude.ai/code` and the Claude mobile app. **Do this step** unless the user
+opts out.
 
-```
-=== SSH CONNECTION DETAILS ===
-SSH host:  <user>@<public-ipv4>
-SSH port:  <port>                # 22 unless changed
-SSH key:   <absolute path to the PRIVATE key, e.g. /home/<you>/.ssh/id_ed25519_<name>>
-Connect:   ssh -i <private-key path> -p <port> <user>@<public-ipv4>
-```
+**Offer to skip only when** the user says they just want a plain hardened
+server / bastion, **or** they have no Claude **Pro or Max** subscription (Remote
+Control requires one — API keys don't work), **or** the server is under ~2 GB
+RAM and they don't want swap. If they skip, note that in the summary and go to
+Step 7. Otherwise:
 
-Use an **absolute** path for the key (expand `~`), and the private key file
-(no `.pub`). If SSH is on 22 you may drop `-p 22` from the `Connect` line, but
-still fill in the `SSH port:` field.
+Full walkthrough in `references/remote-control.md`; the short version
+(provider-independent — Remote Control is outbound HTTPS only, no firewall
+change):
 
-Then the human-readable recap:
-
-- server name, **provider**, location (full name), size/type, image, server ID
-- what was hardened: root SSH disabled, password auth disabled, passwordless
-  `sudo` for `<user>`, UFW active with ports `<ssh>`, 80, 443 open; swapfile if
-  `--swap` was used
-- which key file is the private one to guard, and the reminder to back it up
-- if the `~/.ssh/config` alias was added, note that `ssh <server-name>` now
-  works too
-
-### Record it to memory
-
-If you have a persistent memory or notes facility, save the server's details
-there now so a future session can connect without re-deriving anything. This is
-"project"-type context: an ongoing resource, not a one-off fact.
-
-Use a stable, predictable key — `server-<name>` (e.g. `server-cc-dev`) — so
-the deprovision step (Step 7) can find and remove it. Store, at minimum:
-
-- server name, **provider** (digitalocean / hetzner), provider **ID**, location,
-  size/type, image
-- public IPv4
-- **SSH host** (`<user>@<ip>`), **SSH port**, absolute **path to the private
-  key**
-- the ready-to-run `ssh -i <key> -p <port> <user>@<ip>` command
-- creation date, and a one-line note that it was hardened by this skill
-
-Keep it accurate: if the server is later resized, rebuilt, or its key changes,
-update the same entry rather than adding a second one.
-
-## Optional: run Claude Code on the server (Remote Control)
-
-If the user wants to drive Claude Code *on the box* from `claude.ai/code` or the
-Claude mobile app — "make this a Claude Code box", "control it from my phone" —
-set up Remote Control. Full walkthrough in `references/remote-control.md`; the
-short version (provider-independent — Remote Control is outbound HTTPS only, no
-firewall change):
-
-1. **Sizing.** Claude Code needs Node 22 and each Remote Control server idles
-   ~150–300 MB on top of that. Steer to a ~4 GB type, or a ~2 GB type +
-   `--swap 2G` as a floor for one or two RC servers (Step 2b; slug in
-   `<provider ref>`).
+1. **Sizing check.** Claude Code needs Node 22 and each Remote Control server
+   idles ~150–300 MB on top. Step 2 already steers to a ~4 GB type (or a ~2 GB
+   type + `--swap 2G` floor). If the server ended up smaller, say so and either
+   resize or proceed with reduced headroom.
 2. **Name the first RC server.** A Remote Control server serves **one
    directory** and appears as **one named session** in `claude.ai/code` and the
    mobile Code tab. Ask the user what to call this first one — it becomes
@@ -344,8 +308,60 @@ firewall change):
    as `<name>` in `claude.ai/code` and the mobile **Code** tab. Mention
    `/config` → push notifications.
 
-Add a note to the server's memory entry that it runs Remote Control, listing
-the RC server name(s) and the `systemctl --user … claude-rc@<name>` commands.
+Record the RC server name(s) in the memory entry in Step 7.
+
+## Step 7 — Summary
+
+First, print the **connection details block** below verbatim (filled in) as the
+last thing in your reply. It exists so that this Claude session — or any tool —
+can SSH into the server straight away without hunting through prose. Keep the
+exact field names; they're what a caller greps for.
+
+```
+=== SSH CONNECTION DETAILS ===
+SSH host:  <user>@<public-ipv4>
+SSH port:  <port>                # 22 unless changed
+SSH key:   <absolute path to the PRIVATE key, e.g. /home/<you>/.ssh/id_ed25519_<name>>
+Connect:   ssh -i <private-key path> -p <port> <user>@<public-ipv4>
+```
+
+Use an **absolute** path for the key (expand `~`), and the private key file
+(no `.pub`). If SSH is on 22 you may drop `-p 22` from the `Connect` line, but
+still fill in the `SSH port:` field.
+
+Then the human-readable recap:
+
+- server name, **provider**, location (full name), size/type, image, server ID
+- what was hardened: root SSH disabled, password auth disabled, passwordless
+  `sudo` for `<user>`, UFW active with ports `<ssh>`, 80, 443 open; swapfile if
+  `--swap` was used
+- **Remote Control:** the RC server name(s) and session URL(s), or "skipped"
+  with the reason
+- which key file is the private one to guard, and the reminder to back it up
+- if the `~/.ssh/config` alias was added, note that `ssh <server-name>` now
+  works too
+
+### Record it to memory
+
+If you have a persistent memory or notes facility, save the server's details
+there now so a future session can connect without re-deriving anything. This is
+"project"-type context: an ongoing resource, not a one-off fact.
+
+Use a stable, predictable key — `server-<name>` (e.g. `server-cc-dev`) — so
+the deprovision step (Step 8) can find and remove it. Store, at minimum:
+
+- server name, **provider** (digitalocean / hetzner), provider **ID**, location,
+  size/type, image
+- public IPv4
+- **SSH host** (`<user>@<ip>`), **SSH port**, absolute **path to the private
+  key**
+- the ready-to-run `ssh -i <key> -p <port> <user>@<ip>` command
+- Remote Control: the RC server name(s) and `systemctl --user …
+  claude-rc@<name>` commands, or a note that it was skipped
+- creation date, and a one-line note that it was hardened by this skill
+
+Keep it accurate: if the server is later resized, rebuilt, or its key changes,
+update the same entry rather than adding a second one.
 
 ### Add another Remote Control server
 
@@ -356,7 +372,7 @@ Each RC server is one directory under `~/projects` and one named entry in
 `claude.ai/code` and the mobile Code tab.
 
 1. **Get onto the box.** Recover its SSH host / port / key from the
-   `server-<name>` memory entry (Step 6). If there's no entry, ask the user
+   `server-<name>` memory entry (Step 7). If there's no entry, ask the user
    for the connection details.
 2. **Pick a name** with the user — becomes `~/projects/<name>` and the session
    label. `[a-z0-9-]` only. Default it to the repo name when cloning.
@@ -391,7 +407,7 @@ Watch memory pressure: each RC server idles ~150–300 MB. Two or three on a 2 G
 box, more on 4 GB+. `systemctl --user stop claude-rc@<name>` frees one without
 losing its state.
 
-## Step 7 — Deleting the server later
+## Step 8 — Deleting the server later
 
 When the user asks to tear a server down:
 
@@ -407,7 +423,7 @@ When the user asks to tear a server down:
    ```
    Then verify with `doctl compute droplet list` / `hcloud server list`.
 3. **Clean up the traces** so nothing stale is left behind:
-   - **Memory.** Remove the `server-<name>` entry you saved in Step 6 (or mark
+   - **Memory.** Remove the `server-<name>` entry you saved in Step 7 (or mark
      it destroyed with the date). A deleted server's connection details must not
      linger as if still live.
    - **Auto-imported SSH key.** If the provisioning script registered a one-off

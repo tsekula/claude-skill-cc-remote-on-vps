@@ -308,7 +308,7 @@ Prices drift — always show the live `size list` output, don't quote these.
 
 - Billing is hourly with the monthly figure as a cap; a short test costs a cent
   or two. Powering a droplet **off does not stop billing** — only destroying it
-  does (Step 7).
+  does (Step 8).
 - Resizing up later is possible but needs a brief reboot; disk can only grow,
   never shrink.
 - Size availability varies slightly by region/account. If
@@ -343,14 +343,14 @@ scripts/provision-digitalocean.sh \
 
 ---
 
-## 8. Teardown (SKILL.md Step 7)
+## 8. Teardown (SKILL.md Step 8)
 
 ```bash
 doctl compute droplet delete <id> --force
 doctl compute droplet list                       # confirm it's gone
 ```
 
-Then the cleanup common to both providers (see SKILL.md Step 7), plus the
+Then the cleanup common to both providers (see SKILL.md Step 8), plus the
 DigitalOcean-specific one:
 
 - **One-off SSH key.** If `provision-digitalocean.sh` registered a key named

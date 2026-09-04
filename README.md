@@ -4,9 +4,9 @@ A Claude Code skill that provisions a Linux cloud server on **DigitalOcean**
 (`doctl`) or **Hetzner Cloud** (`hcloud`) and hardens it for SSH: non-root sudo
 user, key-only auth (optional custom port), UFW firewall. It records the
 server's connection details to Claude's memory on creation, and cleans that up
-(plus known-hosts, auto-imported keys) on deletion. Optionally installs Claude
-Code on the server with a Remote Control service so it can be driven from
-claude.ai/code or the Claude mobile app.
+(plus known-hosts, auto-imported keys) on deletion. **By default it also
+installs Claude Code + a Remote Control service** on the server (Step 6,
+skippable) so it can be driven from claude.ai/code or the Claude mobile app.
 
 Neither provider is the default — the skill asks in Step 1.
 
@@ -16,11 +16,11 @@ Neither provider is the default — the skill asks in Step 1.
 - `references/digitalocean.md` — `doctl` install + auth, regions/sizes, provision, teardown
 - `references/hetzner.md` — `hcloud` install + auth, locations/types, provision, teardown
 - `references/ssh-keys.md` — ELI5 SSH keys + per-OS generate/store/backup steps
-- `references/remote-control.md` — optional: run Claude Code on the server (one or more Remote Control servers), driven from claude.ai/mobile; private-repo auth
+- `references/remote-control.md` — run Claude Code on the server (one or more Remote Control servers), driven from claude.ai/mobile; private-repo auth
 - `scripts/provision-digitalocean.sh` / `scripts/provision-hetzner.sh` — create the server, wait for SSH, print the IP (writes `./.server-ip`)
 - `scripts/harden.sh` — run on the server: sudo user, keys, swap, UFW, sshd lockdown
-- `scripts/setup-claude-code.sh` — optional: install Node 22 + Claude Code + the templated `claude-rc@` service, set up the first Remote Control server
-- `scripts/add-rc-server.sh` — optional: add another Remote Control server (own directory / session), optionally cloning a repo
+- `scripts/setup-claude-code.sh` — Step 6 (default): install Node 22 + Claude Code + the templated `claude-rc@` service, set up the first Remote Control server
+- `scripts/add-rc-server.sh` — add another Remote Control server (own directory / session), optionally cloning a repo
 
 `setup-claude-code.sh` writes the templated `claude-rc@.service` systemd unit
 directly (one instance per directory: `systemctl --user enable --now

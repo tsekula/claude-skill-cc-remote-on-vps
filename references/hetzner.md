@@ -265,14 +265,14 @@ scripts/provision-hetzner.sh \
 
 ---
 
-## 7. Teardown (SKILL.md Step 7)
+## 7. Teardown (SKILL.md Step 8)
 
 ```bash
 hcloud server delete <name>          # accepts name or ID
 hcloud server list                   # confirm it's gone
 ```
 
-Then the cleanup common to both providers (see SKILL.md Step 7), plus the
+Then the cleanup common to both providers (see SKILL.md Step 8), plus the
 Hetzner-specific one:
 
 - **One-off SSH key.** If `provision-hetzner.sh` registered a key named

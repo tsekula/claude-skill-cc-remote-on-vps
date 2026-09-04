@@ -200,7 +200,7 @@ installed and signed in to the same account.
   linger). Workspace trust and the login token persist in `~/.claude*`.
 - **Updating Claude Code**: `sudo npm i -g @anthropic-ai/claude-code`, then
   `systemctl --user restart 'claude-rc@*'`.
-- **Teardown**: destroying the box (skill Step 7) takes every Remote Control
+- **Teardown**: destroying the box (skill Step 8) takes every Remote Control
   session, the login token, and the units with it — nothing to undo on the
   account side. The sessions just disappear from `claude.ai/code`.
 - **One account, shared control**: anyone signed into that Claude account can

@@ -217,6 +217,32 @@ has the default name (`~/.ssh/id_ed25519`). Pass `--swap` on servers under
 thumb is swap = RAM, so `--swap 1G` on a 1 GB box, `--swap 2G` on a 2 GB box.
 Omit it on 4 GB+ or a pure bastion.
 
+### Explain it to the user (ELI5)
+
+Before or right after running the script, give the user this plain-language
+version — a first-timer should understand what just changed and why:
+
+> This server is about to be online 24/7 with Claude Code able to read, change,
+> and run things on it, and you'll be able to steer it from your phone. So we
+> lock it down first:
+>
+> - **You log in with a key, never a password.** A password can be guessed by
+>   bots that scan the whole internet all day; a key can't. Password logins are
+>   turned off completely.
+> - **You don't log in as the "root" superuser.** You get a normal account that
+>   can *become* root when needed. So a mistake — yours or Claude's — or a bad
+>   dependency doesn't automatically have run-of-the-house.
+> - **A firewall closes every door except the ones we use.** Only SSH (and the
+>   two standard web ports, left open for later) can be reached from outside.
+>   Remote Control doesn't need an open door at all — it dials out.
+> - **A small safety valve (swap)** on smaller servers stops the system from
+>   killing Claude mid-task when memory gets tight.
+> - The SSH config is **checked before it's applied**, and your current
+>   connection is never dropped, so there's no way to lock yourself out.
+>
+> Not done (ask if you want it later): brute-force jailing (`fail2ban`),
+> automatic security updates, 2FA for SSH.
+
 `harden.sh` does, in this order (order matters so you don't lock yourself out):
 
 1. Creates the user with `adduser --disabled-password`, adds them to `sudo`,
@@ -354,7 +380,7 @@ Then the human-readable recap:
 - server name, **provider**, location (full name), size/type, image, server ID
 - what was hardened: root SSH disabled, password auth disabled, passwordless
   `sudo` for `<user>`, UFW active with ports `<ssh>`, 80, 443 open; swapfile if
-  `--swap` was used
+  `--swap` was used (give the Step 4 ELI5 version if the user is new to this)
 - **Remote Control:** each RC server's name + Launch URL, and that the user can
   ask for more parallel sessions later — or "skipped" with the reason
 - which key file is the private one to guard, and the reminder to back it up

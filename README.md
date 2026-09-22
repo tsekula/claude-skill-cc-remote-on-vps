@@ -1,17 +1,86 @@
 # Claude Code Remote Control on VPS
 
-*(skill name `cc-remote-on-vps`; repo `claude-droplet`)*
+*(skill name `cc-remote-on-vps`; repository `claude-skill-cc-remote-on-vps`)*
 
-A Claude Code skill that stands up a Linux VPS on **DigitalOcean** (`doctl`) or
-**Hetzner Cloud** (`hcloud`) to run **Claude Code with Remote Control** — driven
-from claude.ai/code or the Claude mobile app. It provisions the server, hardens
-it for SSH (non-root sudo user, key-only auth, optional custom port, UFW
-firewall), then **by default installs Claude Code + a Remote Control systemd
-service** (Step 6, skippable for a plain box). Connection details go to Claude's
-memory on creation and are cleaned up (with known-hosts + auto-imported keys) on
-deletion.
+This is a guided helper for putting **Claude Code on a secure Linux VPS** so you
+can keep working from your browser, desktop, or phone. It walks you through
+choosing **DigitalOcean** or **Hetzner Cloud**, creates the server, locks down
+SSH, installs Claude Code, and leaves you with a named Remote Control session
+you can pick up anywhere. You do not need to understand servers to follow the
+questions, but you will need an account with the cloud provider you choose.
 
-Neither provider is the default — the skill asks in Step 1.
+> **A paid Claude plan is required.** Claude Code and Remote Control require a
+> paid **Pro, Max, Team, or Enterprise** plan. A free Claude account or an API
+> key by itself cannot use this Remote Control workflow. The cloud provider will
+> also charge for the VPS while it exists.
+
+## Quick start (for non-technical users)
+
+### 1. Download the skill
+
+Download the [latest `cc-remote-on-vps.skill` file](https://github.com/tsekula/claude-skill-cc-remote-on-vps/raw/refs/heads/master/cc-remote-on-vps.skill) and save it somewhere easy to find, such as your Downloads folder.
+
+The `.skill` file is a ZIP-format package containing the skill and its helper
+files. If an upload window only accepts `.zip`, make a copy and rename the copy
+from `.skill` to `.zip`; do not unpack it before uploading.
+
+### 2. Add it to Claude on the web
+
+1. Open [claude.ai](https://claude.ai) and sign in with the paid Claude account
+   you want to use for Claude Code.
+2. Open **Settings → Capabilities** and make sure **Code execution and file
+   creation** is enabled.
+3. Open **Customize → Skills**, click **+**, choose **Create skill**, then
+   choose **Upload a skill**.
+4. Select the downloaded `.skill` file (or the renamed `.zip` copy), wait for
+   it to finish uploading, and switch the skill on.
+
+The skill is private to your account by default. Once it is enabled, start at
+[`claude.ai/code`](https://claude.ai/code) and ask Claude to use it. Be explicit
+about the provider, for example:
+
+> Use the `cc-remote-on-vps` skill to set up a new DigitalOcean server for me.
+
+The skill will ask for the server name, location, size, SSH key, and login name
+before it creates anything. It never silently chooses between DigitalOcean and
+Hetzner.
+
+### 3. Use it in Claude Desktop
+
+1. Download Claude Desktop from [claude.com/download](https://claude.com/download)
+   and install the version for your computer.
+2. Sign in with the **same paid Claude account** used on the web.
+3. Open **Customize → Skills** and confirm that `cc-remote-on-vps` is enabled.
+   Skills are tied to your Claude account, so uploading it on the web makes it
+   available here too. If it is not visible, upload it once from Claude on the
+   web using the steps above.
+4. Open the **Code** area and start or continue the named Remote Control session.
+   Claude Code in Desktop requires a paid Pro, Max, Team, or Enterprise plan.
+
+Desktop is a good place to do the first server setup because the skill may need
+you to approve a browser login or copy a one-time code. After that, you can use
+Desktop as another window into the same VPS session.
+
+### 4. Use it from the Claude mobile app
+
+1. Install Claude for [iOS or Android](https://claude.com/download).
+2. Sign in with the **same paid Claude account**.
+3. Open the **Code** tab. Once the VPS setup is complete and its Remote Control
+   service is running, your named session will appear there.
+4. Tap the session to send tasks, review results, or continue work while away
+   from your computer. Turn on push notifications from a Claude Code session via
+   `/config` if you want to know when Claude needs you.
+
+The mobile app is the remote control for the Claude Code process on the VPS; it
+does not replace the one-time server setup. Start that setup from Claude on the
+web or Desktop, then use mobile whenever it is convenient.
+
+### 5. What to expect after setup
+
+The skill leaves one named session for one project directory. The same session
+appears at claude.ai/code, in Claude Desktop's Code area, and in the mobile
+Code tab. You can ask the skill to add another session later for another repo
+or sandbox.
 
 ## What the hardening does, and why it matters here
 

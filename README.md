@@ -45,22 +45,6 @@ The skill will ask for the server name, location, size, SSH key, and login name
 before it creates anything. It never silently chooses between DigitalOcean and
 Hetzner.
 
-#### Copy-and-paste install prompt
-
-If you would rather have Claude fetch the package for you, paste this into a
-chat:
-
-```text
-Please download and install this custom Claude skill into my account:
-https://github.com/tsekula/claude-skill-cc-remote-on-vps/raw/refs/heads/master/cc-remote-on-vps.skill
-
-After you confirm that it is installed and enabled, tell me to start a new chat.
-In that new chat I will run: /cc-remote-on-vps
-```
-
-After Claude confirms the installation, start a **new chat** and enter
-`/cc-remote-on-vps`. That slash command starts the skill's guided workflow.
-
 ### 3. Use it in Claude Desktop
 
 1. Download Claude Desktop from [claude.com/download](https://claude.com/download)

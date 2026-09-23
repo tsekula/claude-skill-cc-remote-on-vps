@@ -15,6 +15,12 @@ https://community.hetzner.com/tutorials/howto-hcloud-cli/
 
 ## 1. Install
 
+**Default: let the skill do it.** `bash scripts/install-cli.sh hcloud`
+installs or updates `hcloud` on macOS, Linux, or Windows (Git Bash) without
+admin rights, verifies the download's SHA-256 against the release's
+`checksums.txt`, and puts it on PATH (SKILL.md Step 1). The manual options
+below are the fallback if that script fails.
+
 Pick the row for the user's OS. After any method, verify with:
 
 ```bash
@@ -181,14 +187,19 @@ price for the chosen location in the next step.
 
 ```bash
 hcloud server-type list          # id, name, cores, cpu_type, arch, memory, disk
-# price per location (no jq needed):
-hcloud server-type describe cx23 -o json | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['location'], p['price_monthly']['net'], '/mo net') for p in d['prices']]"
+hcloud server-type describe cx23 # "Locations:" section lists Hourly/Monthly per location
 ```
+
+`describe` prints **gross** prices (VAT included); for net, read
+`prices[].price_monthly.net` from `hcloud server-type describe cx23 -o json`
+yourself. Don't pipe it into `python3`/`jq` — neither is reliably installed
+(on Windows `python3` is often a Microsoft Store stub that just prints an
+error).
 
 `server-type list` has **no price** and the lineup **changes** (the `cx2x`
 generation was replaced by `cx23/cx33/…`; `cx11`/`cx22` no longer exist). Always
-run `server-type list` for real options and `server-type describe <t> -o json`
-for the price at the chosen location; the table below is a starting point only,
+run `server-type list` for real options and `server-type describe <t>` for the
+price at the chosen location; the table below is a starting point only,
 verified 2026-09 at nbg1.
 
 Prices are EUR/mo **net** (add ~19 % VAT where it applies), **plus ~€0.50/mo for
@@ -209,7 +220,7 @@ Notes:
 - **Avoid the `cpx*` (AMD) line for small servers** — the 2026 price rise made
   `cpx12` (1 vCPU / 2 GB) *more expensive* than `cx23`.
 - `cax*` types are **Arm (aarch64)**. `provision-hetzner.sh` + `harden.sh` +
-  `setup-claude-code.sh` all handle Arm (the Node 22 installer picks the arm64
+  `setup-claude-code.sh` all handle Arm (the native Claude Code installer picks the arm64
   build), and Hetzner serves the matching `ubuntu-24.04` image automatically.
 - There is **no cheap sub-4 GB tier in EU locations** now; `cx23` (4 GB) is the
   floor. US locations (`ash`, `hil`) still have `cpx11` (2 GB) but cost more.

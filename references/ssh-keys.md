@@ -59,11 +59,16 @@ it for them.
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_<server-name> -C "<server-name>" -N ""
 ```
 
-**Windows (PowerShell):**
+**Windows:** if you (Claude) are running it, use your Bash tool (Git Bash)
+and the macOS/Linux line above — `~/.ssh` is the same `C:\Users\<you>\.ssh`
+folder. If the user runs it in PowerShell:
 ```powershell
-ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\id_ed25519_<server-name>" -C "<server-name>" -N '""'
+mkdir "$env:USERPROFILE\.ssh" -Force | Out-Null
+ssh-keygen --% -t ed25519 -f "%USERPROFILE%\.ssh\id_ed25519_<server-name>" -C "<server-name>" -N ""
 ```
-(If `$env:USERPROFILE\.ssh` doesn't exist yet: `mkdir "$env:USERPROFILE\.ssh"`.)
+The `--%` makes PowerShell pass `-N ""` through untouched. Without it, the
+empty-passphrase argument behaves differently between PowerShell 5.1 and 7.x
+(`-N '""'` in 7.3+ sets a passphrase of two literal quote characters).
 
 Flag by flag:
 
@@ -71,7 +76,7 @@ Flag by flag:
 - `-f ...` — where the pair is written and what it's named. Naming it after the
   server name makes it obvious later which key is which.
 - `-C "..."` — a label stored inside the public file, for your future self.
-- `-N ""` (PowerShell: `-N '""'`) — no passphrase, so the key just works. This
+- `-N ""` — no passphrase, so the key just works. This
   is the simplest choice for a first server. For an extra layer — a password
   that protects the private *file itself* — the user should run the command
   **without** the `-N` part in their own terminal, so they can type the

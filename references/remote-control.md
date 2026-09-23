@@ -26,8 +26,11 @@ servers**, one per directory, each its own systemd instance. See
   Control): `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` pointing off
   `api.anthropic.com`, `DISABLE_TELEMETRY`, `DO_NOT_TRACK`,
   `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_GROWTHBOOK`.
-- **Node 22+**. Ubuntu 24.04's apt only has 18, so the helper script installs
-  Node 22 from nodejs.org.
+- Nothing else: the helper script uses Anthropic's **native installer**
+  (`curl -fsSL https://claude.ai/install.sh | bash`, run as the sudo user,
+  never with `sudo`), which puts a self-updating binary at
+  `~/.local/bin/claude`. No Node.js required. It needs ~512 MB free RAM
+  while installing.
 
 ## 1. Install + first server (automated)
 
@@ -44,7 +47,8 @@ scp -i <key> scripts/setup-claude-code.sh <user>@<ip>:/tmp/
 ssh -i <key> <user>@<ip> "bash /tmp/setup-claude-code.sh --name <first-server-name> --service"
 ```
 
-It installs Node 22, `@anthropic-ai/claude-code`, `tmux`, and `git`; creates
+It installs Claude Code (native), `tmux`, and `git`; removes an old global
+npm install of Claude Code if one is there; creates
 `~/projects/<name>`; and with `--service` installs the **templated**
 `systemd --user` unit `claude-rc@.service` plus `loginctl enable-linger` so
 servers survive logout and reboot. It does **not** log you in — that's
@@ -198,7 +202,9 @@ installed and signed in to the same account.
 
 - **Reboot**: enabled `claude-rc@*` instances come back on their own (unit +
   linger). Workspace trust and the login token persist in `~/.claude*`.
-- **Updating Claude Code**: `sudo npm i -g @anthropic-ai/claude-code`, then
+- **Updating Claude Code**: the native build updates itself in the
+  background; a running server picks up the new version when restarted. To
+  force it now: `claude update`, then
   `systemctl --user restart 'claude-rc@*'`.
 - **Teardown**: destroying the box (skill Step 8) takes every Remote Control
   session, the login token, and the units with it — nothing to undo on the

@@ -14,6 +14,12 @@ Official docs: https://docs.digitalocean.com/reference/doctl/how-to/install/
 
 ## 1. Install
 
+**Default: let the skill do it.** `bash scripts/install-cli.sh doctl` installs
+or updates `doctl` on macOS, Linux, or Windows (Git Bash) without admin rights,
+verifies the download's SHA-256 against the release's checksum file, and puts
+it on PATH (SKILL.md Step 1). The manual options below are the fallback if
+that script fails.
+
 Pick the row for the user's OS. After any method, verify with:
 
 ```bash
@@ -328,12 +334,12 @@ Prices drift — always show the live `size list` output, don't quote these.
 scripts/provision-digitalocean.sh \
   --name web-01 \
   --region fra1 \
-  --size s-1vcpu-1gb \
+  --size s-2vcpu-4gb \
   --image ubuntu-24-04-x64 \
   --ssh-key ~/.ssh/id_ed25519_web-01.pub   # the .pub chosen in Step 1
 ```
 
-- `--image` default is `ubuntu-24-04-x64`.
+- `--size` default is `s-2vcpu-4gb` (Step 2's ~4 GB Claude Code default), `--image` default `ubuntu-24-04-x64`.
 - `--extra "…"` is passed verbatim to `doctl compute droplet create` — e.g.
   `--extra "--enable-ipv6 --enable-monitoring"` or `--extra "--vpc-uuid <id>"`.
 - It registers the key with DigitalOcean if absent (matched by fingerprint, so

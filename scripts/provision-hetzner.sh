@@ -43,9 +43,16 @@ done
 [[ -n "$NAME"     ]] || { echo "ERROR: --name is required" >&2; usage; }
 [[ -n "$LOCATION" ]] || { echo "ERROR: --location is required" >&2; usage; }
 
+# install-cli.sh may have just installed hcloud; the calling shell's PATH can
+# predate that, so also look in the folders it installs to.
+if ! command -v hcloud >/dev/null 2>&1; then
+  for d in "$HOME/.local/bin" "$(cygpath -u "${LOCALAPPDATA:-}" 2>/dev/null)/Programs/hcloud"; do
+    if [[ -x "$d/hcloud" || -x "$d/hcloud.exe" ]]; then PATH="$d:$PATH"; break; fi
+  done
+fi
 command -v hcloud >/dev/null 2>&1 || {
-  echo "ERROR: hcloud not found. See references/hetzner.md for install steps" >&2
-  echo "       (macOS/Linux/Windows/Docker), then run 'hcloud context create <name>'." >&2
+  echo "ERROR: hcloud not found. Install it with: scripts/install-cli.sh hcloud" >&2
+  echo "       then run 'hcloud context create <name>'." >&2
   exit 1
 }
 hcloud server list >/dev/null 2>&1 || {

@@ -1,0 +1,3 @@
+# Scripts are copied to Linux servers: keep LF even on Windows checkouts.
+* text=auto eol=lf
+*.skill binary

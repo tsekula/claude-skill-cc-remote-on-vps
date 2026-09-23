@@ -6,7 +6,7 @@ set -euo pipefail
 
 NAME=""
 REGION=""
-SIZE="s-1vcpu-1gb"
+SIZE="s-2vcpu-4gb"
 IMAGE="ubuntu-24-04-x64"
 SSH_KEY="${HOME}/.ssh/id_ed25519.pub"
 EXTRA=""
@@ -17,7 +17,7 @@ Usage: provision-digitalocean.sh --name NAME --region SLUG [options]
 
   --name NAME        Droplet name (required)
   --region SLUG      Region slug, e.g. nyc3 (required)
-  --size SLUG        Size slug (default: s-1vcpu-1gb)
+  --size SLUG        Size slug (default: s-2vcpu-4gb — the skill's ~4 GB Claude Code default)
   --image SLUG       Image slug (default: ubuntu-24-04-x64)
   --ssh-key PATH     Public key file (default: ~/.ssh/id_ed25519.pub)
   --extra "ARGS"     Extra args passed verbatim to `doctl compute droplet create`
@@ -41,9 +41,16 @@ done
 [[ -n "$NAME"   ]] || { echo "ERROR: --name is required" >&2; usage; }
 [[ -n "$REGION" ]] || { echo "ERROR: --region is required" >&2; usage; }
 
+# install-cli.sh may have just installed doctl; the calling shell's PATH can
+# predate that, so also look in the folders it installs to.
+if ! command -v doctl >/dev/null 2>&1; then
+  for d in "$HOME/.local/bin" "$(cygpath -u "${LOCALAPPDATA:-}" 2>/dev/null)/Programs/doctl"; do
+    if [[ -x "$d/doctl" || -x "$d/doctl.exe" ]]; then PATH="$d:$PATH"; break; fi
+  done
+fi
 command -v doctl >/dev/null 2>&1 || {
-  echo "ERROR: doctl not found. See references/digitalocean.md for install steps" >&2
-  echo "       (macOS/Linux/Windows/Docker), then run 'doctl auth init'." >&2
+  echo "ERROR: doctl not found. Install it with: scripts/install-cli.sh doctl" >&2
+  echo "       then run 'doctl auth init'." >&2
   exit 1
 }
 doctl account get >/dev/null 2>&1 || {

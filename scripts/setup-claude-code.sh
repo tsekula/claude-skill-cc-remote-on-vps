@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run ON the server as the sudo user (not root).
-# Installs Node 22 + Claude Code, installs a TEMPLATED systemd --user unit for
+# Installs Claude Code (native installer), installs a TEMPLATED systemd --user unit for
 # Remote Control, and sets up the FIRST server instance.
 #
 # Each Remote Control server serves one directory under ~/projects and appears
@@ -46,42 +46,39 @@ done
 
 PROJECT_DIR="$HOME/projects/$SESSION_NAME"
 
-# --- 1. Node 22 (Claude Code needs >=22; Ubuntu 24.04 apt only has 18) --------
-need_node=1
-if command -v node >/dev/null 2>&1; then
-  major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
-  [[ "$major" -ge 22 ]] && need_node=0
-fi
-
-if [[ "$need_node" -eq 1 ]]; then
-  echo "Installing Node 22 from nodejs.org ..."
-  case "$(uname -m)" in
-    x86_64)  narch=x64 ;;
-    aarch64|arm64) narch=arm64 ;;
-    *) echo "ERROR: unsupported arch $(uname -m)" >&2; exit 1 ;;
-  esac
-  tarball="$(curl -fsSL https://nodejs.org/dist/latest-v22.x/ \
-    | grep -o "node-v22[0-9.]*-linux-${narch}.tar.xz" | head -1)"
-  [[ -n "$tarball" ]] || { echo "ERROR: could not find a Node 22 tarball" >&2; exit 1; }
-  curl -fsSL -o "/tmp/$tarball" "https://nodejs.org/dist/latest-v22.x/$tarball"
-  sudo tar -xJf "/tmp/$tarball" -C /usr/local --strip-components=1
-  rm -f "/tmp/$tarball"
-  hash -r
-fi
-echo "node $(node --version), npm $(npm --version)"
-
-# --- 2. tmux + git + Claude Code -------------------------------------------
+# --- 1. tmux + git ------------------------------------------------------
 pkgs=()
 command -v tmux >/dev/null 2>&1 || pkgs+=(tmux)
 command -v git  >/dev/null 2>&1 || pkgs+=(git)
 if [[ ${#pkgs[@]} -gt 0 ]]; then
-  sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${pkgs[@]}"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 update -qq
+  sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y -qq "${pkgs[@]}"
 fi
-echo "Installing Claude Code ..."
-sudo /usr/local/bin/npm install -g @anthropic-ai/claude-code >/dev/null
+
+# --- 2. Claude Code (native installer) -----------------------------------
+# Anthropic's native build: a single self-updating binary under ~/.local, no
+# Node.js needed. It must run as this user, never with sudo.
+CLAUDE="$HOME/.local/bin/claude"
+if [[ -x "$CLAUDE" ]]; then
+  echo "Claude Code already installed (native): $("$CLAUDE" --version)"
+else
+  echo "Installing Claude Code (native installer) ..."
+  curl -fsSL https://claude.ai/install.sh | bash
+fi
+[[ -x "$CLAUDE" ]] || { echo "ERROR: $CLAUDE missing after install." >&2; exit 1; }
+export PATH="$HOME/.local/bin:$PATH"
 hash -r
-echo "Claude Code $(claude --version)"
+
+# Boxes set up by older versions of this script used a global npm install at
+# /usr/local/bin/claude. Remove it so there's exactly one `claude`.
+MIGRATED=0
+if command -v npm >/dev/null 2>&1 \
+   && npm ls -g --depth=0 @anthropic-ai/claude-code >/dev/null 2>&1; then
+  echo "Removing the old npm-installed Claude Code ..."
+  sudo npm uninstall -g @anthropic-ai/claude-code >/dev/null 2>&1 || true
+  MIGRATED=1
+fi
+echo "Claude Code $("$CLAUDE" --version)"
 
 # --- 3. first project directory ------------------------------------------
 mkdir -p "$PROJECT_DIR"
@@ -103,10 +100,10 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h/projects/%i
-Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=TERM=dumb
 Environment=NO_COLOR=1
-ExecStart=/usr/local/bin/claude remote-control --name %i
+ExecStart=%h/.local/bin/claude remote-control --name %i
 Restart=on-failure
 RestartSec=10
 # The live status line redraws once a second; discard it. Recover the session
@@ -120,6 +117,11 @@ EOF
   # linger lets user services run with no active login (i.e. after reboot)
   sudo loginctl enable-linger "$USER"
   systemctl --user daemon-reload
+  # After a migration from npm, running servers still point at the removed
+  # binary; restart them onto the native one.
+  if [[ "$MIGRATED" -eq 1 ]]; then
+    systemctl --user try-restart 'claude-rc@*' || true
+  fi
 fi
 
 # --- 5. next steps -----------------------------------------------------
@@ -129,6 +131,8 @@ Next steps (interactive — do these yourself in this SSH session):
 
   1. Log in and trust the directory:
        cd "$PROJECT_DIR" && claude
+         (if "claude: command not found", log out and back in once, or use
+          ~/.local/bin/claude — the installer put it there)
          - choose "Claude account with subscription"
          - open the printed URL in a browser signed in to your Claude (Pro/Max)
            account, approve, paste the code back

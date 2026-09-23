@@ -39,6 +39,7 @@ UNIT="$HOME/.config/systemd/user/claude-rc@.service"
   echo "ERROR: $UNIT not found. Run setup-claude-code.sh --service first." >&2
   exit 1
 }
+export PATH="$HOME/.local/bin:$PATH"
 command -v claude >/dev/null 2>&1 || {
   echo "ERROR: claude not on PATH. Run setup-claude-code.sh first." >&2
   exit 1

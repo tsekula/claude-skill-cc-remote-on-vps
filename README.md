@@ -98,14 +98,17 @@ order (the order matters — the firewall goes up before `sshd` is touched, and
 | **Passwordless `sudo`** (validated `/etc/sudoers.d/` drop-in) | The sudo user can escalate without a password prompt. | The account is **key-only** and has *no* password, so a normal `sudo` prompt would be unanswerable and would lock the user out of root. Since SSH password auth is already off (below), anyone with the key already has full access — this doesn't widen the attack surface, it just makes the box usable. Same convention cloud-init uses for the default user on AWS/GCP/Azure. Delete the file if you later set a password and want the prompt back. |
 | **Key-only SSH** | `sshd` drop-in sets `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PubkeyAuthentication yes`, `PermitRootLogin no`. | SSH is the most-scanned service on the internet; password and keyboard-interactive auth are what brute-force and credential-stuffing bots hammer. With them off, there is nothing to guess — an attacker needs the actual private key file. This is the single highest-value change on the box. |
 | **Optional custom SSH port** (`--port`) | Moves `sshd` off 22 if asked. | Cuts log noise from drive-by scanners. It is **not** a security boundary on its own — key-only auth is what protects you — so it's opt-in, not default. |
-| **`sshd -t` before restart** | Config is syntax-checked; on failure the drop-in is removed and `sshd` is left running its old config. Existing connections are never dropped. | A typo in `sshd_config` that only bites on the next connection is how people lock themselves out of a remote box. This makes that impossible. |
+| **`sshd -t` / `sshd -T` before restart** | Config is syntax-checked and the *effective* settings are confirmed (so a cloud-init file can't silently re-enable passwords); on failure the drop-in is removed and `sshd` is left running its old config. Existing connections are never dropped. | A typo in `sshd_config` that only bites on the next connection is how people lock themselves out of a remote box. This makes that impossible. |
 | **UFW default-deny firewall** | `deny incoming`, `allow outgoing`, then explicitly allow the SSH port + `80` + `443`; enable. | Only SSH is actually exposed; 80/443 are pre-opened so a future web service on the box works without re-running anything. Remote Control itself needs **no inbound port** — it's outbound HTTPS to Anthropic only — so the firewall never interferes with it, it just closes everything else (databases, dev servers, debug ports) that a process might bind by accident. |
-| **Swapfile** (`--swap`, on boxes < 4 GB) | Creates `/swapfile`, persists it in `/etc/fstab`, sets `vm.swappiness=10` (RAM first, spill only under real pressure). | Node + Claude Code idle around 0.5–1 GB; `npm install`, test suites, and compilers spike well above that. Without swap the kernel's OOM killer picks a process to kill mid-task — often the long-lived `claude remote-control` itself, which silently drops your session. Swap turns an OOM kill into a slowdown. |
+| **Swapfile** (`--swap`, on boxes < 4 GB) | Creates `/swapfile`, persists it in `/etc/fstab`, sets `vm.swappiness=10` (RAM first, spill only under real pressure). | Claude Code idles around 0.5–1 GB; `npm install`, test suites, and compilers spike well above that. Without swap the kernel's OOM killer picks a process to kill mid-task — often the long-lived `claude remote-control` itself, which silently drops your session. Swap turns an OOM kill into a slowdown. |
+| **Automatic security updates** | Makes sure Ubuntu's `unattended-upgrades` is installed and enabled (security updates only, no automatic reboots). | The box runs unattended for months. Known vulnerabilities in OpenSSH, the kernel, or system libraries get patched without anyone logging in. Ubuntu images usually ship with it on; the script makes sure. |
+| **Optional `fail2ban`** (`--fail2ban`) | Installs fail2ban with an `sshd` jail on your SSH port: 1-hour ban after 5 failures in 10 minutes. | With key-only SSH there's no password to guess, so this is noise reduction, not a lock. It's off unless you ask. |
 
 ### Deliberately out of scope
 
-The skill stops at "safe to leave running with key-only SSH". It does **not**
-install `fail2ban`, enable unattended security upgrades, set up 2FA/FIDO2 for
+The skill stops at "safe to leave running with key-only SSH". It makes sure
+Ubuntu's automatic security updates are on, and installs `fail2ban` only if
+you ask (`--fail2ban`). It does **not** set up 2FA/FIDO2 for
 SSH, or apply SELinux/AppArmor profiles. Those are reasonable next steps for a
 long-lived box but they're policy choices, not universal defaults — add them
 yourself, or ask the skill and it can walk you through them.
@@ -117,9 +120,10 @@ yourself, or ask the skill and it can walk you through them.
 - `references/hetzner.md` — `hcloud` install + auth, locations/types, provision, teardown
 - `references/ssh-keys.md` — ELI5 SSH keys + per-OS generate/store/backup steps
 - `references/remote-control.md` — run Claude Code on the server (one or more Remote Control servers), driven from claude.ai/mobile; private-repo auth
+- `scripts/install-cli.sh` — install/update `doctl` or `hcloud` on your computer and put it on PATH
 - `scripts/provision-digitalocean.sh` / `scripts/provision-hetzner.sh` — create the server, wait for SSH, print the IP (writes `./.server-ip`)
-- `scripts/harden.sh` — run on the server: sudo user, keys, swap, UFW, sshd lockdown
-- `scripts/setup-claude-code.sh` — Step 6 (default): install Node 22 + Claude Code + the templated `claude-rc@` service, set up the first Remote Control server
+- `scripts/harden.sh` — run on the server: sudo user, keys, swap, security updates, UFW, sshd lockdown, optional fail2ban
+- `scripts/setup-claude-code.sh` — Step 6 (default): install Claude Code (native installer, no Node.js) + the templated `claude-rc@` service, set up the first Remote Control server
 - `scripts/add-rc-server.sh` — add another Remote Control server (own directory / session), optionally cloning a repo
 
 `setup-claude-code.sh` writes the templated `claude-rc@.service` systemd unit
@@ -138,9 +142,15 @@ or "make me a DigitalOcean droplet in Frankfurt".
 
 ## Prerequisites
 
-- **One** provider CLI installed and authenticated:
+- An account with **one** provider, plus an API token from it. You don't need
+  to install its CLI yourself: `scripts/install-cli.sh` installs or updates
+  `doctl` / `hcloud` on macOS, Linux, or Windows (no admin rights, SHA-256
+  verified, added to PATH). You only run one login command in your own
+  terminal so the token never passes through the chat.
   - DigitalOcean: `doctl` — see [`references/digitalocean.md`](references/digitalocean.md)
   - Hetzner: `hcloud` — see [`references/hetzner.md`](references/hetzner.md)
+- On Windows: Git for Windows (Git Bash). Claude Code uses it to run the
+  skill's bash scripts.
 - An SSH keypair (`~/.ssh/id_ed25519`, or one the skill generates per server)
 
 ## Install on macOS / Windows

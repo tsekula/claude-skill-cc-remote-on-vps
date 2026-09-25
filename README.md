@@ -1,4 +1,6 @@
-# Claude Code Remote Control on VPS
+# Claude Skill: Remotely Control Claude Code on a custom VPS
+
+[Download the .skill](https://github.com/tsekula/claude-skill-cc-remote-on-vps/raw/refs/heads/master/cc-remote-on-vps.skill)
 
 *(skill name `cc-remote-on-vps`)*
 

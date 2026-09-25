@@ -1,164 +1,285 @@
 # Claude Code Remote Control on VPS
 
-*(skill name `cc-remote-on-vps`; repository `claude-skill-cc-remote-on-vps`)*
+*(skill name `cc-remote-on-vps`)*
 
-This is a guided helper for putting **Claude Code on a secure Linux VPS** so you
-can keep working from your browser, desktop, or phone. It walks you through
-choosing **DigitalOcean** or **Hetzner Cloud**, creates the server, locks down
-SSH, installs Claude Code, and leaves you with a named Remote Control session
-you can pick up anywhere. You do not need to understand servers to follow the
-questions, but you will need an account with the cloud provider you choose.
+## What is this?
 
-> **A paid Claude plan is required.** Claude Code and Remote Control require a
-> paid **Pro, Max, Team, or Enterprise** plan. A free Claude account or an API
-> key by itself cannot use this Remote Control workflow. The cloud provider will
-> also charge for the VPS while it exists.
+Normally Claude Code runs on your own computer. Close the laptop and it stops.
 
-## Quick start (for non-technical users)
+This skill gets Claude to set up a small rented computer in the cloud (a
+"server", or "VPS") that stays on around the clock, with Claude Code running on
+it. You then talk to it from wherever you are: the Claude website, the Claude
+desktop app, or the Claude app on your phone.
 
-### 1. Download the skill
+Some things you can do with that:
 
-Download the [latest `cc-remote-on-vps.skill` file](https://github.com/tsekula/claude-skill-cc-remote-on-vps/raw/refs/heads/master/cc-remote-on-vps.skill) and save it somewhere easy to find, such as your Downloads folder.
+- Start a coding task at your desk, then check on it from your phone.
+- Let Claude keep working on a long job while your laptop is closed.
+- Have a safe "sandbox" where Claude can install and try things without
+  touching your own computer.
 
-The `.skill` file is a ZIP-format package containing the skill and its helper
-files. If an upload window only accepts `.zip`, make a copy and rename the copy
-from `.skill` to `.zip`; do not unpack it before uploading.
+You don't need to know anything about servers. You tell Claude you want one,
+answer a few simple questions, and Claude does the rest: it rents the server,
+locks it down, installs Claude Code, and hands you a session you can open from
+anywhere.
 
-### 2. Add it to Claude on the web
+## What you need before you start
 
-1. Open [claude.ai](https://claude.ai) and sign in with the paid Claude account
-   you want to use for Claude Code.
+- **A paid Claude plan** (Pro, Max, Team or Enterprise). A free account or an
+  API key won't work for this.
+- **An account with one cloud company.** The skill works with two. Either is
+  fine:
+  - **Hetzner** (hetzner.com/cloud). Usually the cheapest. Its data centres are
+    mostly in Europe, plus the US and Singapore.
+  - **DigitalOcean** (digitalocean.com). Well known and easy to use, with more
+    locations worldwide, but it costs more.
+- **A computer** running Windows, macOS or Linux, with the Claude desktop app.
+
+You **don't** need to install anything else yourself. If Claude needs a tool
+(the cloud company's command-line tool, for example), it installs it for you.
+
+### What it costs
+
+The cloud company bills you for as long as the server exists, whether you use
+it or not. Rough prices for the size this skill recommends (4 GB of memory):
+
+| Company | Roughly per month |
+|---|---|
+| Hetzner (`cx23`) | about €6, plus VAT |
+| DigitalOcean (`s-2vcpu-4gb`) | about $24 |
+
+Claude shows you the real, current prices before it creates anything. Both
+companies charge by the hour, so a server you try for an afternoon and then
+delete costs a few cents.
+
+**Turning the server off doesn't stop the bill. Only deleting it does.** The
+last section below shows how.
+
+## Setting it up
+
+### Step 1: Get the skill
+
+Download the latest
+[`cc-remote-on-vps.skill`](https://github.com/tsekula/claude-skill-cc-remote-on-vps/raw/refs/heads/master/cc-remote-on-vps.skill)
+file and save it somewhere easy to find, like your Downloads folder.
+
+It's a zip file in disguise. Don't unzip it. If an upload window only accepts
+`.zip` files, make a copy and rename the copy from `.skill` to `.zip`.
+
+### Step 2: Add it to your Claude account
+
+1. Go to [claude.ai](https://claude.ai) and sign in with your paid account.
 2. Open **Settings → Capabilities** and make sure **Code execution and file
-   creation** is enabled.
+   creation** is switched on.
 3. Open **Customize → Skills**, click **+**, choose **Create skill**, then
-   choose **Upload a skill**.
-4. Select the downloaded `.skill` file (or the renamed `.zip` copy), wait for
-   it to finish uploading, and switch the skill on.
+   **Upload a skill**.
+4. Pick the file you downloaded, wait for it to upload, and switch it on.
 
-The skill is private to your account by default. Once it is enabled, start at
-[`claude.ai/code`](https://claude.ai/code) and ask Claude to use it. Be explicit
-about the provider, for example:
+The skill is private to your account. It follows you to the Claude desktop app
+too, because skills belong to your account, not to one device.
 
-> Use the `cc-remote-on-vps` skill to set up a new DigitalOcean server for me.
+### Step 3: Ask Claude to build your server
 
-The skill will ask for the server name, location, size, SSH key, and login name
-before it creates anything. It never silently chooses between DigitalOcean and
-Hetzner.
+Do this part **in the Claude desktop app, in the Code tab, on your own
+computer**. That matters: Claude creates a "key" file (it works like a house
+key for the server) and saves it on your computer. If you did this in a
+browser-only session, the key could vanish when the session ends.
 
-### 3. Use it in Claude Desktop
+1. Install the Claude desktop app from
+   [claude.com/download](https://claude.com/download) and sign in with the same
+   account.
+2. Open the **Code** tab and start a new session. Any folder is fine.
+3. Type something like:
 
-1. Download Claude Desktop from [claude.com/download](https://claude.com/download)
-   and install the version for your computer.
-2. Sign in with the **same paid Claude account** used on the web.
-3. Open **Customize → Skills** and confirm that `cc-remote-on-vps` is enabled.
-   Skills are tied to your Claude account, so uploading it on the web makes it
-   available here too. If it is not visible, upload it once from Claude on the
-   web using the steps above.
-4. Open the **Code** area and start or continue the named Remote Control session.
-   Claude Code in Desktop requires a paid Pro, Max, Team, or Enterprise plan.
+   > Use the cc-remote-on-vps skill to set up a new Hetzner server for me.
 
-Desktop is a good place to do the first server setup because the skill may need
-you to approve a browser login or copy a one-time code. After that, you can use
-Desktop as another window into the same VPS session.
+   (or "DigitalOcean server", whichever company you picked).
 
-### 4. Use it from the Claude mobile app
+Claude then walks you through it. Expect to:
 
-1. Install Claude for [iOS or Android](https://claude.com/download).
-2. Sign in with the **same paid Claude account**.
-3. Open the **Code** tab. Once the VPS setup is complete and its Remote Control
-   service is running, your named session will appear there.
-4. Tap the session to send tasks, review results, or continue work while away
-   from your computer. Turn on push notifications from a Claude Code session via
-   `/config` if you want to know when Claude needs you.
+- **Say where you are**, so it can pick a nearby data centre.
+- **Pick a size.** It shows prices and recommends one. The recommendation is
+  fine.
+- **Choose a name for the server** (like `my-claude-box`) and a username for
+  yourself (like `sam`).
+- **Create an API token** at the cloud company. This is a password-like code
+  that lets Claude create the server for you. Claude tells you exactly where to
+  click. Then you paste the token into **your own terminal window** with one
+  command Claude gives you. Never paste it into the chat, and Claude won't ask
+  you to.
+- **Approve a few actions** when Claude asks permission to run things. That's
+  normal.
+- **Log in to Claude on the server.** Near the end, Claude gives you a link.
+  Open it, approve, and paste back the code it shows. This connects the server
+  to your Claude account.
+- **Name your first session.** `sandbox` is a good choice for experiments, or
+  use the name of a project.
 
-The mobile app is the remote control for the Claude Code process on the VPS; it
-does not replace the one-time server setup. Start that setup from Claude on the
-web or Desktop, then use mobile whenever it is convenient.
+The whole thing takes about 10–15 minutes. At the end, Claude shows you two
+blocks of details. The **SSH CONNECTION DETAILS** block is how to reach the
+server. The **REMOTE CONTROL READY** block has your session's name and link.
+Keep both somewhere safe, like a note in your password manager.
 
-### 5. What to expect after setup
+**Back up your key.** Claude tells you which file is your private key (it lives
+in a folder called `.ssh` in your home folder). Save a copy in your password
+manager. If you lose it, you lose your way into the server.
 
-The skill leaves one named session for one project directory. The same session
-appears at claude.ai/code, in Claude Desktop's Code area, and in the mobile
-Code tab. You can ask the skill to add another session later for another repo
-or sandbox.
+### Step 4: Use it from anywhere
 
-## What the hardening does, and why it matters here
+- **Web:** go to [claude.ai/code](https://claude.ai/code) and pick your session
+  by name.
+- **Desktop:** open the **Code** tab in the Claude app. Your session is listed
+  there.
+- **Phone:** install the Claude app (iPhone or Android), sign in, open the
+  **Code** tab, and tap your session. A green dot means it's online.
 
-A Remote Control box isn't a throwaway server. It runs a `claude` process
-**24/7**, it can **read, write, and execute** anything in your project
-directories, and it's steerable from a phone. So the baseline is: nothing on it
-should be reachable or usable by anyone who isn't holding your SSH private key.
-`scripts/harden.sh` runs once over SSH as root and does the following, in this
-order (the order matters — the firewall goes up before `sshd` is touched, and
-`sshd` is validated before it's restarted, so you can't lock yourself out):
+Want a ping on your phone when Claude needs you or finishes? In a session, type
+`/config` and switch on push notifications.
 
-| Step | What it does | Why it's good practice for a Remote Control VPS |
+## Everyday use: what to say to Claude
+
+You manage everything by asking Claude in plain English, from a Code session on
+your computer. Swap in your own server and session names.
+
+| When you want to… | Say something like… |
+|---|---|
+| Set up a server | "Use the cc-remote-on-vps skill to set up a new Hetzner server." |
+| Add a second project, in its own session | "Add a Remote Control session called `blog` to my server `my-claude-box`." |
+| Start work on one of your GitHub projects | "Add a session called `my-app` to `my-claude-box` and clone `https://github.com/me/my-app` into it." |
+| Check everything is running | "Check the Remote Control sessions on `my-claude-box` are running." |
+| Fix a session that's gone missing or stuck | "Restart the `sandbox` session on `my-claude-box`." |
+| Update Claude Code on the server | "Update Claude Code on `my-claude-box` and restart its sessions." (It also updates itself automatically.) |
+| Make the server bigger | "Resize `my-claude-box` to 8 GB of memory." (Takes a short restart. You can grow the disk but never shrink it.) |
+| Get your connection details again | "How do I connect to `my-claude-box`?" |
+| Delete it and stop paying | "Delete my server `my-claude-box` and clean up after it." |
+
+Claude saves the details of each server it builds (where it is, how to log in)
+to its memory when it can, so later requests usually just work. If it can't
+find them, paste in the **SSH CONNECTION DETAILS** block from setup.
+
+Each session runs in its own folder on the server and shows up under its own
+name in the app. Two or three sessions at once is comfortable on the
+recommended size.
+
+## Doing it yourself (optional)
+
+You never *have* to touch the server directly. If you're curious, here are the
+handful of commands that cover the basics. Run them in a terminal on your
+computer (on Windows, **Terminal** or **PowerShell**; on a Mac, **Terminal**).
+
+**Log in to the server:**
+
+```bash
+ssh my-claude-box
+```
+
+That short version works if you let Claude add a shortcut during setup.
+Otherwise, use the `Connect:` line from your SSH CONNECTION DETAILS block. It
+looks like `ssh -i <key file> sam@<address>`. Type `exit` to leave.
+
+**Once you're logged in to the server**, swap `sandbox` for your session's
+name:
+
+| What | Command |
+|---|---|
+| Is my session running? | `systemctl --user status claude-rc@sandbox` |
+| Restart a session | `systemctl --user restart claude-rc@sandbox` |
+| Pause a session (frees memory, keeps its work) | `systemctl --user stop claude-rc@sandbox` |
+| Start it again | `systemctl --user start claude-rc@sandbox` |
+| See why a session isn't connecting | `journalctl --user -u claude-rc@sandbox -n 30` |
+| Update Claude Code now | `claude update` |
+| How much memory is in use? | `free -h` |
+
+**Deleting the server yourself**, from your own computer, not the server:
+
+```bash
+hcloud server delete my-claude-box                        # Hetzner
+doctl compute droplet delete my-claude-box --force        # DigitalOcean
+```
+
+Asking Claude is better, because it also tidies up the leftover key, its
+notes, and (on Hetzner) any spare IP address that would keep costing a little.
+
+## Is it safe?
+
+The server runs 24/7 and Claude can change things on it, so the skill locks it
+down before anything else. In plain terms:
+
+- **No passwords.** You get in with your key file only. Bots that guess
+  passwords all day have nothing to guess.
+- **No logging in as the all-powerful "root" account.** You get a normal
+  account that can do admin tasks when needed. A mistake, yours or Claude's,
+  can't take over the whole machine by default.
+- **A firewall** blocks everything except the way in you use (SSH) and two
+  standard web ports kept open for later. Remote Control doesn't need an open
+  port at all: the server calls out to Claude, nothing calls in.
+- **Security fixes install themselves**, so known holes get patched without
+  you logging in.
+- **Settings are checked before they're switched on**, so a mistake can't lock
+  you out.
+- **Optional extra:** you can ask for `fail2ban`, which blocks addresses that
+  keep failing to log in. It's not essential when there's no password to
+  guess, but it cuts down the noise.
+
+Two things to keep in mind:
+
+- **Anyone signed in to your Claude account can drive the server** while
+  Remote Control is on. Protect your Claude login (a strong password and
+  two-factor sign-in).
+- **Your conversations with the server go through Anthropic**, like any other
+  Claude conversation. The files stay on your server.
+
+## If something goes wrong
+
+- **"Command not found" after Claude installed a tool.** Close your terminal
+  window and open a new one. Windows only picks up newly installed tools in new
+  windows.
+- **Your session doesn't show up in the app.** Ask Claude to "check the Remote
+  Control sessions on my server", or restart the session with the command
+  above. Make sure you're signed in to the same Claude account everywhere.
+- **"Permission denied" when you log in yourself.** You're probably using the
+  wrong key file or username. Use the exact `Connect:` line from your SSH
+  CONNECTION DETAILS.
+- **You lost your key file.** You can still reach the server through the cloud
+  company's website (look for a "console" button on the server's page). Ask
+  Claude to walk you through adding a new key. Or, if nothing important is on
+  it, delete the server and build a fresh one.
+- **Claude's work keeps stopping on a busy task.** The server may be running
+  out of memory. Ask Claude to resize it to the next size up.
+
+---
+
+## For the technically curious
+
+What the skill runs, and where:
+
+| File | What it does | Runs on |
 |---|---|---|
-| **Non-root sudo user** | Creates a normal user, adds it to `sudo`, disables the `root` account for SSH. | Claude Code, the `claude-rc@` service, `npm install`, build tools — all run as an unprivileged user. A bad command or a compromised dependency isn't automatically root. `root` is also the one username every SSH scanner tries first; taking it off the table removes that entire class of attempt. |
-| **Passwordless `sudo`** (validated `/etc/sudoers.d/` drop-in) | The sudo user can escalate without a password prompt. | The account is **key-only** and has *no* password, so a normal `sudo` prompt would be unanswerable and would lock the user out of root. Since SSH password auth is already off (below), anyone with the key already has full access — this doesn't widen the attack surface, it just makes the box usable. Same convention cloud-init uses for the default user on AWS/GCP/Azure. Delete the file if you later set a password and want the prompt back. |
-| **Key-only SSH** | `sshd` drop-in sets `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PubkeyAuthentication yes`, `PermitRootLogin no`. | SSH is the most-scanned service on the internet; password and keyboard-interactive auth are what brute-force and credential-stuffing bots hammer. With them off, there is nothing to guess — an attacker needs the actual private key file. This is the single highest-value change on the box. |
-| **Optional custom SSH port** (`--port`) | Moves `sshd` off 22 if asked. | Cuts log noise from drive-by scanners. It is **not** a security boundary on its own — key-only auth is what protects you — so it's opt-in, not default. |
-| **`sshd -t` / `sshd -T` before restart** | Config is syntax-checked and the *effective* settings are confirmed (so a cloud-init file can't silently re-enable passwords); on failure the drop-in is removed and `sshd` is left running its old config. Existing connections are never dropped. | A typo in `sshd_config` that only bites on the next connection is how people lock themselves out of a remote box. This makes that impossible. |
-| **UFW default-deny firewall** | `deny incoming`, `allow outgoing`, then explicitly allow the SSH port + `80` + `443`; enable. | Only SSH is actually exposed; 80/443 are pre-opened so a future web service on the box works without re-running anything. Remote Control itself needs **no inbound port** — it's outbound HTTPS to Anthropic only — so the firewall never interferes with it, it just closes everything else (databases, dev servers, debug ports) that a process might bind by accident. |
-| **Swapfile** (`--swap`, on boxes < 4 GB) | Creates `/swapfile`, persists it in `/etc/fstab`, sets `vm.swappiness=10` (RAM first, spill only under real pressure). | Claude Code idles around 0.5–1 GB; `npm install`, test suites, and compilers spike well above that. Without swap the kernel's OOM killer picks a process to kill mid-task — often the long-lived `claude remote-control` itself, which silently drops your session. Swap turns an OOM kill into a slowdown. |
-| **Automatic security updates** | Makes sure Ubuntu's `unattended-upgrades` is installed and enabled (security updates only, no automatic reboots). | The box runs unattended for months. Known vulnerabilities in OpenSSH, the kernel, or system libraries get patched without anyone logging in. Ubuntu images usually ship with it on; the script makes sure. |
-| **Optional `fail2ban`** (`--fail2ban`) | Installs fail2ban with an `sshd` jail on your SSH port: 1-hour ban after 5 failures in 10 minutes. | With key-only SSH there's no password to guess, so this is noise reduction, not a lock. It's off unless you ask. |
+| [`SKILL.md`](SKILL.md) | The step-by-step instructions Claude follows | — |
+| `scripts/install-cli.sh` | Installs or updates `hcloud` / `doctl` (checksum-verified, no admin rights) and adds it to PATH | Your computer |
+| `scripts/provision-hetzner.sh`, `scripts/provision-digitalocean.sh` | Creates the server and waits until it answers | Your computer |
+| `scripts/harden.sh` | Creates the non-root sudo user, installs your key, turns off password and root login, sets up the firewall, swap, automatic security updates, and optional `fail2ban`. Checks the SSH settings before applying them. | The server, as root |
+| `scripts/setup-claude-code.sh` | Installs Claude Code (Anthropic's native installer) and the `claude-rc@` background service | The server, as your user |
+| `scripts/add-rc-server.sh` | Adds another session: one folder under `~/projects`, optionally cloning a repo | The server, as your user |
+| `references/*.md` | Provider details, SSH key help, Remote Control details | — |
 
-### Deliberately out of scope
+On Windows, the scripts run through Git Bash, which Claude installs if it's
+missing.
 
-The skill stops at "safe to leave running with key-only SSH". It makes sure
-Ubuntu's automatic security updates are on, and installs `fail2ban` only if
-you ask (`--fail2ban`). It does **not** set up 2FA/FIDO2 for
-SSH, or apply SELinux/AppArmor profiles. Those are reasonable next steps for a
-long-lived box but they're policy choices, not universal defaults — add them
-yourself, or ask the skill and it can walk you through them.
+### Installing from this repository instead
 
-## Layout
-
-- [`SKILL.md`](SKILL.md) — the provider-neutral flow Claude follows
-- `references/digitalocean.md` — `doctl` install + auth, regions/sizes, provision, teardown
-- `references/hetzner.md` — `hcloud` install + auth, locations/types, provision, teardown
-- `references/ssh-keys.md` — ELI5 SSH keys + per-OS generate/store/backup steps
-- `references/remote-control.md` — run Claude Code on the server (one or more Remote Control servers), driven from claude.ai/mobile; private-repo auth
-- `scripts/install-cli.sh` — install/update `doctl` or `hcloud` on your computer and put it on PATH
-- `scripts/provision-digitalocean.sh` / `scripts/provision-hetzner.sh` — create the server, wait for SSH, print the IP (writes `./.server-ip`)
-- `scripts/harden.sh` — run on the server: sudo user, keys, swap, security updates, UFW, sshd lockdown, optional fail2ban
-- `scripts/setup-claude-code.sh` — Step 6 (default): install Claude Code (native installer, no Node.js) + the templated `claude-rc@` service, set up the first Remote Control server
-- `scripts/add-rc-server.sh` — add another Remote Control server (own directory / session), optionally cloning a repo
-
-`setup-claude-code.sh` writes the templated `claude-rc@.service` systemd unit
-directly (one instance per directory: `systemctl --user enable --now
-claude-rc@<name>`).
-
-## Install as a personal skill
+If you use the `claude` command-line tool, you can link this folder in as a
+personal skill instead of uploading the `.skill` file:
 
 ```bash
 mkdir -p ~/.claude/skills
 ln -s "$(pwd)" ~/.claude/skills/cc-remote-on-vps
 ```
 
-Then in Claude Code: "spin up a new Hetzner server called web-01 in Nuremberg",
-or "make me a DigitalOcean droplet in Frankfurt".
+On Windows, from PowerShell run as administrator:
 
-## Prerequisites
+```powershell
+New-Item -ItemType SymbolicLink -Path "$HOME\.claude\skills\cc-remote-on-vps" -Target (Get-Location)
+```
 
-- An account with **one** provider, plus an API token from it. You don't need
-  to install its CLI yourself: `scripts/install-cli.sh` installs or updates
-  `doctl` / `hcloud` on macOS, Linux, or Windows (no admin rights, SHA-256
-  verified, added to PATH). You only run one login command in your own
-  terminal so the token never passes through the chat.
-  - DigitalOcean: `doctl` — see [`references/digitalocean.md`](references/digitalocean.md)
-  - Hetzner: `hcloud` — see [`references/hetzner.md`](references/hetzner.md)
-- On Windows: Git for Windows (Git Bash). Claude Code uses it to run the
-  skill's bash scripts.
-- An SSH keypair (`~/.ssh/id_ed25519`, or one the skill generates per server)
-
-## Install on macOS / Windows
-
-The symlink command above is bash. Equivalents:
-
-- **macOS:** same as Linux —
-  `ln -s "$(pwd)" ~/.claude/skills/cc-remote-on-vps`
-- **Windows (PowerShell, as admin):**
-  `New-Item -ItemType SymbolicLink -Path "$HOME\.claude\skills\cc-remote-on-vps" -Target (Get-Location)`
-- Or just copy the folder into `~/.claude/skills/` instead of symlinking.
+Or just copy the folder into `~/.claude/skills/`.
